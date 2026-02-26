@@ -1,0 +1,10 @@
+---
+description: React + Vite frontend rules
+globs: frontend/**/*
+---
+
+You are working in the Vite + React frontend.
+- Use functional components + hooks.
+- Use TypeScript when possible.
+- API calls should go to `/api/...` (the proxy will handle it).
+- Follow existing folder structure in frontend/src/.

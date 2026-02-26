@@ -1,0 +1,9 @@
+---
+description: Laravel backend rules
+globs: backend/**/*
+---
+
+You are working in the Laravel PHP backend.
+- Follow standard Laravel conventions (controllers in app/Http/Controllers, routes in routes/api.php, models in app/Models, etc.).
+- All API responses should be JSON.
+- Use Laravel Sanctum/Passport if auth is needed (check existing code).

@@ -1,0 +1,562 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Notification;
+use App\Models\Procurement;
+use App\Models\ProcurementPdf;
+use App\Models\PurchaseRequest;
+use App\Models\User;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+
+class ProcurementController extends Controller
+{
+    public function search(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'q' => ['required', 'string', 'max:255'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $queryText = trim($validated['q']);
+        $exact = filter_var($request->query('exact', false), FILTER_VALIDATE_BOOLEAN);
+        $includeDeleted = filter_var($request->query('include_deleted', false), FILTER_VALIDATE_BOOLEAN);
+        $perPage = (int) ($validated['per_page'] ?? 15);
+
+        $query = Procurement::query()->with($this->procurementRelations())->latest('updated_at');
+
+        if (! $includeDeleted) {
+            $query->where('deleted', false);
+        }
+
+        if ($exact) {
+            $query->where(function ($innerQuery) use ($queryText): void {
+                $innerQuery->where('procurement_no', $queryText)
+                    ->orWhere('title', $queryText)
+                    ->orWhere('mode_of_procurement', $queryText)
+                    ->orWhere('project', $queryText)
+                    ->orWhere('status', $queryText)
+                    ->orWhere('description', $queryText);
+
+                if (ctype_digit($queryText)) {
+                    $innerQuery->orWhere('id', (int) $queryText);
+                }
+            });
+
+            return response()->json($query->paginate($perPage));
+        }
+
+        $terms = preg_split('/\s+/', $queryText, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        $query->where(function ($groupQuery) use ($terms, $queryText): void {
+            if ($terms === []) {
+                return;
+            }
+
+            foreach ($terms as $term) {
+                $groupQuery->where(function ($termQuery) use ($term): void {
+                    $variants = array_values(array_unique([
+                        $term,
+                        $this->normalizeSearchToken($term),
+                    ]));
+
+                    $termQuery->where(function ($variantQuery) use ($variants): void {
+                        foreach ($variants as $index => $variant) {
+                            $method = $index === 0 ? 'where' : 'orWhere';
+                            $variantQuery->{$method}(function ($fieldQuery) use ($variant): void {
+                                $fieldQuery->where('procurement_no', 'like', "%{$variant}%")
+                                    ->orWhere('title', 'like', "%{$variant}%")
+                                    ->orWhere('mode_of_procurement', 'like', "%{$variant}%")
+                                    ->orWhere('project', 'like', "%{$variant}%")
+                                    ->orWhere('status', 'like', "%{$variant}%")
+                                    ->orWhere('description', 'like', "%{$variant}%");
+
+                                if (ctype_digit($variant)) {
+                                    $fieldQuery->orWhere('id', (int) $variant);
+                                }
+                            });
+                        }
+                    });
+                });
+            }
+
+            $groupQuery->orWhere('procurement_no', $queryText);
+        });
+
+        return response()->json($query->paginate($perPage));
+    }
+
+    public function index(Request $request): JsonResponse
+    {
+        $includeDeleted = filter_var($request->query('include_deleted', false), FILTER_VALIDATE_BOOLEAN);
+
+        $query = Procurement::query()->with($this->procurementRelations())->latest('updated_at');
+
+        if (! $includeDeleted) {
+            $query->where('deleted', false);
+        }
+
+        return response()->json($query->paginate(15));
+    }
+
+    public function show(Procurement $procurement): JsonResponse
+    {
+        return response()->json($procurement->load($this->procurementRelations()));
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'mode_of_procurement' => ['required', 'string', 'max:255'],
+            'project' => ['required', 'string', 'max:255'],
+            'status' => ['nullable', 'string', 'max:50'],
+            'description' => ['nullable', 'string'],
+            'purchase_request' => ['required', 'array'],
+            'purchase_request.office' => ['required', 'string', 'max:255'],
+            'purchase_request.date_created' => ['required', 'date'],
+            'purchase_request.responsibility_center_code' => ['required', 'string', 'max:100'],
+            'purchase_request.purpose' => ['required', 'string'],
+            'purchase_request.items' => ['nullable', 'array'],
+            'purchase_request.items.*.item_no' => ['required_with:purchase_request.items', 'string', 'max:50'],
+            'purchase_request.items.*.stock_no' => ['nullable', 'string', 'max:100'],
+            'purchase_request.items.*.unit' => ['required_with:purchase_request.items', 'string', 'max:50'],
+            'purchase_request.items.*.item_description' => ['required_with:purchase_request.items', 'string'],
+            'purchase_request.items.*.item_inclusions' => ['nullable', 'string'],
+            'purchase_request.items.*.quantity' => ['required_with:purchase_request.items', 'numeric', 'min:0.01'],
+            'purchase_request.items.*.unit_cost' => ['required_with:purchase_request.items', 'numeric', 'min:0'],
+            'pdfs' => ['nullable', 'array'],
+            'pdfs.*.file_name' => ['required_with:pdfs', 'string', 'max:255'],
+            'pdfs.*.file_path' => ['required_with:pdfs', 'string', 'max:1000'],
+            'pdfs.*.checklist' => ['required_with:pdfs', 'array'],
+        ]);
+
+        $procurement = DB::transaction(function () use ($request, $validated): Procurement {
+            $procurement = Procurement::create([
+                'procurement_no' => 'TMP-'.Str::uuid(),
+                'title' => $validated['title'],
+                'mode_of_procurement' => $validated['mode_of_procurement'],
+                'project' => $validated['project'],
+                'status' => $validated['status'] ?? 'pending',
+                'description' => $validated['description'] ?? null,
+                'requested_by' => $request->user()->id,
+                'deleted' => false,
+            ]);
+
+            $procurement->procurement_no = $this->buildProcurementNo($procurement);
+            $procurement->save();
+
+            foreach ($validated['pdfs'] ?? [] as $pdf) {
+                $procurement->pdfs()->create([
+                    'file_name' => $pdf['file_name'],
+                    'file_path' => $pdf['file_path'],
+                    'checklist' => $pdf['checklist'],
+                ]);
+            }
+
+            $purchaseRequest = $procurement->purchaseRequest()->create([
+                'purchase_request_number' => 'TMP-'.Str::uuid(),
+                'office' => $validated['purchase_request']['office'],
+                'date_created' => $validated['purchase_request']['date_created'],
+                'responsibility_center_code' => $validated['purchase_request']['responsibility_center_code'],
+                'purpose' => $validated['purchase_request']['purpose'],
+                'deleted' => false,
+            ]);
+
+            $purchaseRequest->purchase_request_number = $this->buildPurchaseRequestNo($purchaseRequest);
+            $purchaseRequest->save();
+
+            foreach ($validated['purchase_request']['items'] ?? [] as $item) {
+                $purchaseRequest->items()->create([
+                    'item_no' => $item['item_no'],
+                    'stock_no' => $item['stock_no'] ?? null,
+                    'unit' => $item['unit'],
+                    'item_description' => $item['item_description'],
+                    'item_inclusions' => $item['item_inclusions'] ?? null,
+                    'quantity' => $item['quantity'],
+                    'unit_cost' => $item['unit_cost'],
+                    'deleted' => false,
+                ]);
+            }
+
+            $this->notifyBudgetOfficersOnSubmission($procurement, $request->user());
+
+            return $procurement;
+        });
+
+        return response()->json([
+            'message' => 'Procurement created successfully.',
+            'procurement' => $procurement->load($this->procurementRelations()),
+        ], 201);
+    }
+
+    public function update(Request $request, Procurement $procurement): JsonResponse
+    {
+        if (! $this->canModify($request, $procurement)) {
+            return response()->json([
+                'message' => 'You are not allowed to update this procurement.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'title' => ['sometimes', 'string', 'max:255'],
+            'mode_of_procurement' => ['sometimes', 'string', 'max:255'],
+            'project' => ['sometimes', 'string', 'max:255'],
+            'status' => ['sometimes', 'string', 'max:50'],
+            'description' => ['nullable', 'string'],
+            'pdfs' => ['sometimes', 'array'],
+            'pdfs.*.file_name' => ['required_with:pdfs', 'string', 'max:255'],
+            'pdfs.*.file_path' => ['required_with:pdfs', 'string', 'max:1000'],
+            'pdfs.*.checklist' => ['required_with:pdfs', 'array'],
+        ]);
+
+        $user = $request->user();
+        $isBudgetOfficer = $this->isBudgetOfficer($user);
+
+        if (array_key_exists('status', $validated) && ! $isBudgetOfficer) {
+            return response()->json([
+                'message' => 'Only Budget Officers can update procurement status.',
+            ], 403);
+        }
+
+        DB::transaction(function () use ($procurement, $validated): void {
+            $originalStatus = $procurement->status;
+
+            $procurement->fill(array_filter([
+                'title' => $validated['title'] ?? null,
+                'mode_of_procurement' => $validated['mode_of_procurement'] ?? null,
+                'project' => $validated['project'] ?? null,
+                'status' => $validated['status'] ?? null,
+                'description' => array_key_exists('description', $validated) ? $validated['description'] : null,
+            ], static fn ($value): bool => $value !== null));
+
+            if (array_key_exists('description', $validated) && $validated['description'] === null) {
+                $procurement->description = null;
+            }
+
+            $procurement->save();
+
+            if (array_key_exists('pdfs', $validated)) {
+                $procurement->pdfs()->delete();
+
+                foreach ($validated['pdfs'] as $pdf) {
+                    $procurement->pdfs()->create([
+                        'file_name' => $pdf['file_name'],
+                        'file_path' => $pdf['file_path'],
+                        'checklist' => $pdf['checklist'],
+                    ]);
+                }
+            }
+
+            if (array_key_exists('status', $validated) && ! $this->sameStatus($originalStatus, $procurement->status)) {
+                $this->notifyRequesterOnStatusChange($procurement, $originalStatus);
+            }
+        });
+
+        return response()->json([
+            'message' => 'Procurement updated successfully.',
+            'procurement' => $procurement->fresh()->load($this->procurementRelations()),
+        ]);
+    }
+
+    public function uploadAttachment(Request $request, Procurement $procurement): JsonResponse
+    {
+        if (! $this->canModify($request, $procurement)) {
+            return response()->json([
+                'message' => 'You are not allowed to upload attachments for this procurement.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'file' => ['required', 'file', 'mimes:pdf', 'max:20480'],
+            'checklist' => ['required'],
+            'file_name' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $checklist = $validated['checklist'];
+
+        if (is_string($checklist)) {
+            $decoded = json_decode($checklist, true);
+            if (json_last_error() !== JSON_ERROR_NONE || ! is_array($decoded)) {
+                return response()->json([
+                    'message' => 'Checklist must be a valid JSON object or array.',
+                ], 422);
+            }
+            $checklist = $decoded;
+        }
+
+        if (! is_array($checklist)) {
+            return response()->json([
+                'message' => 'Checklist must be an array or object payload.',
+            ], 422);
+        }
+
+        $uploadedFile = $validated['file'];
+        $storedPath = $uploadedFile->store('procurements/'.$procurement->id, 'public');
+
+        $attachment = $procurement->pdfs()->create([
+            'file_name' => $validated['file_name'] ?? $uploadedFile->getClientOriginalName(),
+            'file_path' => $storedPath,
+            'checklist' => $checklist,
+        ]);
+
+        return response()->json([
+            'message' => 'Attachment uploaded successfully.',
+            'attachment' => $attachment,
+        ], 201);
+    }
+
+    public function showAttachment(Request $request, Procurement $procurement, ProcurementPdf $attachment): JsonResponse
+    {
+        if (! $this->canModify($request, $procurement)) {
+            return response()->json([
+                'message' => 'You are not allowed to view this attachment.',
+            ], 403);
+        }
+
+        if (! $this->attachmentBelongsToProcurement($procurement, $attachment)) {
+            return response()->json([
+                'message' => 'Attachment not found for this procurement.',
+            ], 404);
+        }
+
+        return response()->json($attachment);
+    }
+
+    public function downloadAttachment(Request $request, Procurement $procurement, ProcurementPdf $attachment): BinaryFileResponse|JsonResponse
+    {
+        if (! $this->canModify($request, $procurement)) {
+            return response()->json([
+                'message' => 'You are not allowed to download this attachment.',
+            ], 403);
+        }
+
+        if (! $this->attachmentBelongsToProcurement($procurement, $attachment)) {
+            return response()->json([
+                'message' => 'Attachment not found for this procurement.',
+            ], 404);
+        }
+
+        if (! Storage::disk('public')->exists($attachment->file_path)) {
+            return response()->json([
+                'message' => 'Attachment file is missing from storage.',
+            ], 404);
+        }
+
+        return response()->download(
+            Storage::disk('public')->path($attachment->file_path),
+            $attachment->file_name,
+            ['Content-Type' => 'application/pdf']
+        );
+    }
+
+    public function destroy(Request $request, Procurement $procurement): JsonResponse
+    {
+        if (! $this->canModify($request, $procurement)) {
+            return response()->json([
+                'message' => 'You are not allowed to delete this procurement.',
+            ], 403);
+        }
+
+        $procurement->update(['deleted' => true]);
+
+        return response()->json([
+            'message' => 'Procurement marked as deleted.',
+        ]);
+    }
+
+    public function restore(Request $request, Procurement $procurement): JsonResponse
+    {
+        if (! $this->canModify($request, $procurement)) {
+            return response()->json([
+                'message' => 'You are not allowed to restore this procurement.',
+            ], 403);
+        }
+
+        $procurement->update(['deleted' => false]);
+
+        return response()->json([
+            'message' => 'Procurement restored successfully.',
+            'procurement' => $procurement->fresh()->load($this->procurementRelations()),
+        ]);
+    }
+
+    private function buildProcurementNo(Procurement $procurement): string
+    {
+        $year = $procurement->created_at?->format('Y') ?? now()->format('Y');
+
+        return sprintf('PR-%s-%06d', $year, $procurement->id);
+    }
+
+    private function buildPurchaseRequestNo(PurchaseRequest $purchaseRequest): string
+    {
+        $year = $purchaseRequest->created_at?->format('Y') ?? now()->format('Y');
+
+        return sprintf('PUR-%s-%06d', $year, $purchaseRequest->id);
+    }
+
+    private function canModify(Request $request, Procurement $procurement): bool
+    {
+        $user = $request->user();
+
+        return $user && (
+            $procurement->requested_by === $user->id
+            || $this->isBudgetOfficer($user)
+        );
+    }
+
+    private function attachmentBelongsToProcurement(Procurement $procurement, ProcurementPdf $attachment): bool
+    {
+        return (int) $attachment->procurement_id === (int) $procurement->id;
+    }
+
+    private function notifyBudgetOfficersOnSubmission(Procurement $procurement, User $actor): void
+    {
+        $officers = User::query()
+            ->where('id', '!=', $actor->id)
+            ->where('is_active', true)
+            ->where('is_authorized', true)
+            ->where(function ($query): void {
+                $query->whereIn('access_type', ['budget_officer', 'budget officer', 'budget'])
+                    ->orWhereHas('role', function ($roleQuery): void {
+                        $roleQuery->whereRaw('LOWER(role_type) IN (?, ?, ?)', ['budget_officer', 'budget officer', 'budget'])
+                            ->orWhereRaw('LOWER(position) LIKE ?', ['%budget%officer%'])
+                            ->orWhereRaw('LOWER(designation) LIKE ?', ['%budget%officer%'])
+                            ->orWhereRaw('LOWER(role) LIKE ?', ['%budget%officer%']);
+                    });
+            })
+            ->get();
+
+        if ($officers->isEmpty()) {
+            $officers = User::query()
+                ->where('id', '!=', $actor->id)
+                ->where('is_active', true)
+                ->where('is_authorized', true)
+                ->where('access_type', 'admin')
+                ->get();
+        }
+
+        if ($officers->isEmpty()) {
+            return;
+        }
+
+        $now = now();
+        $senderName = trim($actor->first_name.' '.$actor->last_name);
+
+        $records = $officers->map(function (User $officer) use ($procurement, $now, $senderName): array {
+            return [
+                'user_id' => $officer->id,
+                'type' => 'procurement_submitted',
+                'title' => 'New Procurement Submitted',
+                'message' => sprintf(
+                    '%s submitted procurement %s for review.',
+                    $senderName !== '' ? $senderName : 'A user',
+                    $procurement->procurement_no
+                ),
+                'data' => json_encode([
+                    'procurement_id' => $procurement->id,
+                    'procurement_no' => $procurement->procurement_no,
+                    'status' => $procurement->status,
+                    'requested_by' => $procurement->requested_by,
+                ], JSON_THROW_ON_ERROR),
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+        })->all();
+
+        Notification::insert($records);
+    }
+
+    private function notifyRequesterOnStatusChange(Procurement $procurement, string $oldStatus): void
+    {
+        $requester = $procurement->requester;
+
+        if (! $requester || ! $requester->is_active || ! $requester->is_authorized) {
+            return;
+        }
+
+        $newStatus = $procurement->status;
+        $normalizedStatus = strtolower(trim($newStatus));
+
+        $type = match ($normalizedStatus) {
+            'approved' => 'procurement_approved',
+            'rejected' => 'procurement_rejected',
+            'accepted' => 'procurement_accepted',
+            'ongoing' => 'procurement_ongoing',
+            default => 'procurement_status_updated',
+        };
+
+        Notification::create([
+            'user_id' => $requester->id,
+            'type' => $type,
+            'title' => 'Procurement Status Updated',
+            'message' => sprintf(
+                'Your procurement %s changed from %s to %s.',
+                $procurement->procurement_no,
+                $oldStatus,
+                $newStatus
+            ),
+            'data' => [
+                'procurement_id' => $procurement->id,
+                'procurement_no' => $procurement->procurement_no,
+                'old_status' => $oldStatus,
+                'new_status' => $newStatus,
+            ],
+        ]);
+    }
+
+    private function sameStatus(string $a, string $b): bool
+    {
+        return strtolower(trim($a)) === strtolower(trim($b));
+    }
+
+    private function normalizeSearchToken(string $value): string
+    {
+        return preg_replace('/(.)\1+/u', '$1', strtolower(trim($value))) ?? strtolower(trim($value));
+    }
+
+    private function procurementRelations(): array
+    {
+        return [
+            'requester',
+            'pdfs',
+            'purchaseRequest' => function ($purchaseRequestQuery): void {
+                $purchaseRequestQuery->where('deleted', false)
+                    ->with([
+                        'items' => fn ($itemQuery) => $itemQuery->where('deleted', false),
+                    ]);
+            },
+        ];
+    }
+
+    private function isBudgetOfficer(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        $accessType = strtolower(trim((string) $user->access_type));
+        if (in_array($accessType, ['budget_officer', 'budget officer', 'budget'], true)) {
+            return true;
+        }
+
+        $role = $user->role;
+        if (! $role) {
+            return false;
+        }
+
+        $haystack = strtolower(trim(implode(' ', [
+            (string) $role->role_type,
+            (string) $role->position,
+            (string) $role->designation,
+            (string) $role->role,
+        ])));
+
+        return str_contains($haystack, 'budget officer');
+    }
+}

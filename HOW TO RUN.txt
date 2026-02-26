@@ -1,0 +1,4 @@
+1. Open frontend folder in terminal. Run: npm run dev
+2. Open backend folder in a separate terminal. Run: php artisan serve --host=127.0.0.1 --port=8000
+
+NOTE: Only open the vite + react link
