@@ -1,28 +1,3 @@
-<<<<<<< HEAD
-export default function Procurement() {
-  const procurements = [
-    { id: 'RI-2023-02-004', doc: 'Document 1', type: 'Small Value Procurement', status: 'On-going', date: 'March 12, 2023' },
-    { id: 'RI-2023-01-005', doc: 'Document 2', type: 'Small Value Procurement', status: 'Disapproved', date: 'March 17, 2023' },
-    { id: 'RI-2023-02-006', doc: 'Document 3', type: 'Small Value Procurement', status: 'On-going', date: 'March 21, 2023' },
-    { id: 'RI-2023-02-007', doc: 'Document 4', type: 'Small Value Procurement', status: 'On-going', date: 'March 26, 2023' },
-    { id: 'RI-2023-02-004', doc: 'Document 1', type: 'Small Value Procurement', status: 'Approved', date: 'March 27, 2023' },
-    { id: 'RI-2023-01-005', doc: 'Document 2', type: 'Small Value Procurement', status: 'On-going', date: 'March 29, 2023' }
-  ];
-
-  const getStatusStyle = (status) => {
-    switch (status) {
-      case 'On-going':
-        return 'bg-yellow-400 text-black';
-      case 'Approved':
-        return 'bg-teal-600 text-white';
-      case 'Disapproved':
-        return 'bg-red-500 text-white';
-      default:
-        return '';
-    }
-  };
-
-=======
 import { useEffect, useState } from "react";
 
 export default function Procurement() {
@@ -106,7 +81,6 @@ export default function Procurement() {
     });
   };
 
->>>>>>> fe and be
   return (
     <div className="flex min-h-screen">
       <div className="flex-1">
@@ -132,21 +106,6 @@ export default function Procurement() {
                   </tr>
                 </thead>
                 <tbody>
-<<<<<<< HEAD
-                  {procurements.map((item, index) => (
-                    <tr key={index} className="border-b hover:bg-gray-50">
-                      <td className="px-6 py-4 text-red-500 font-semibold">{item.id}</td>
-                      <td className="px-6 py-4 font-medium">{item.doc}</td>
-                      <td className="px-6 py-4 text-black-700">{item.type}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-4 py-1 rounded-full text-sm font-medium ${getStatusStyle(item.status)}`}>
-                          {item.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-black-700">{item.date}</td>
-                    </tr>
-                  ))}
-=======
                   {loading && (
                     <tr>
                       <td colSpan={5} className="px-6 py-6 text-center text-gray-500">
@@ -196,7 +155,6 @@ export default function Procurement() {
                         </td>
                       </tr>
                     ))}
->>>>>>> fe and be
                 </tbody>
               </table>
             </div>

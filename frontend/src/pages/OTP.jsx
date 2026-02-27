@@ -1,13 +1,5 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-<<<<<<< HEAD
-import { useNavigate } from "react-router-dom";
-import pinasLogo from '../components/images/pinas.png';
-
-export default function OTP() {
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-  const navigate = useNavigate();
-=======
 import { useLocation, useNavigate } from "react-router-dom";
 import pinasLogo from "../components/images/pinas.png";
 
@@ -19,19 +11,12 @@ export default function OTP() {
   const navigate = useNavigate();
   const location = useLocation();
   const email = location.state?.email;
->>>>>>> fe and be
 
   const handleOtpChange = (index, value) => {
     if (value.length <= 1 && /^\d*$/.test(value)) {
       const newOtp = [...otp];
       newOtp[index] = value;
       setOtp(newOtp);
-<<<<<<< HEAD
-      
-      // Auto-focus next input
-=======
-
->>>>>>> fe and be
       if (value && index < 5) {
         document.getElementById(`otp-${index + 1}`)?.focus();
       }
@@ -39,29 +24,11 @@ export default function OTP() {
   };
 
   const handleKeyDown = (index, e) => {
-<<<<<<< HEAD
-    // Handle backspace to go to previous input
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-=======
     if (e.key === "Backspace" && !otp[index] && index > 0) {
->>>>>>> fe and be
       document.getElementById(`otp-${index - 1}`)?.focus();
     }
   };
 
-<<<<<<< HEAD
-  const handleVerify = (e) => {
-    e.preventDefault();
-    const otpCode = otp.join('');
-    if (otpCode.length === 6) {
-      navigate("/dashboard");
-    }
-  };
-
-  const handleResendOTP = () => {
-    // Add resend OTP logic here
-    console.log("Resending OTP...");
-=======
   const handleVerify = async (e) => {
     e.preventDefault();
     const otpCode = otp.join("");
@@ -150,7 +117,6 @@ export default function OTP() {
     } finally {
       setIsResending(false);
     }
->>>>>>> fe and be
   };
 
   const handleBackToSignIn = () => {
@@ -219,13 +185,6 @@ export default function OTP() {
               ))}
             </div>
 
-<<<<<<< HEAD
-            {/* Verify Button */}
-            <a href="/loading-screen" className="w-full h-12 bg-[#0e7490] hover:bg-[#0c5f73] text-white font-bold text-base rounded-lg transition-colors flex items-center justify-center gap-2">
-                Verify & Register
-                <span className="text-xl">→</span>
-            </a>
-=======
             {error && (
               <p className="text-sm text-red-600 text-center" role="alert">
                 {error}
@@ -241,28 +200,19 @@ export default function OTP() {
               {isSubmitting ? "Verifying..." : "Verify & Register"}
               <span className="text-xl">→</span>
             </Button>
->>>>>>> fe and be
 
             {/* Bottom Links */}
             <div className="flex items-center justify-between text-sm">
               <button
                 type="button"
                 onClick={handleResendOTP}
-<<<<<<< HEAD
-                className="flex items-center gap-2 text-gray-700 hover:text-[#0e7490] transition"
-=======
                 disabled={isResending}
                 className="flex items-center gap-2 text-gray-700 hover:text-[#0e7490] disabled:text-gray-400 transition"
->>>>>>> fe and be
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-<<<<<<< HEAD
-                Resend OTP
-=======
                 {isResending ? "Resending..." : "Resend OTP"}
->>>>>>> fe and be
               </button>
 
               <button

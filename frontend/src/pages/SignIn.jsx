@@ -1,25 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-<<<<<<< HEAD
-import pinasLogo from '../components/images/pinas.png';
-
-export default function SignIn() {
-  const [username, setUsername] = useState("");
-  const navigate = useNavigate();
-
-  const handleSignIn = (e) => {
-    e.preventDefault();
-
-    if (username.trim() === "") {
-      alert("Please enter your username");
-      return;
-    }
-
-    navigate("/signin-otp", { 
-      state: { username: username.trim() } 
-    });
-=======
 import pinasLogo from "../components/images/pinas.png";
 
 export default function SignIn() {
@@ -84,7 +65,6 @@ export default function SignIn() {
     } finally {
       setIsSubmitting(false);
     }
->>>>>>> fe and be
   };
 
   return (
@@ -116,44 +96,24 @@ export default function SignIn() {
       <div className="flex-1 bg-white flex items-center justify-center px-8">
         <div className="w-full max-w-md bg-[#EAF2F5] rounded-3xl shadow-lg px-10 py-12">
           <div className="text-center mb-8">
-<<<<<<< HEAD
-            <h2 className="text-[#134C62] font-extrabold text-4xl mb-2">Sign In</h2>
-            <p className="text-gray-500 text-sm">
-              Enter your username to receive an OTP
-=======
             <h2 className="text-[#134C62] font-extrabold text-4xl mb-2">
               Sign In
             </h2>
             <p className="text-gray-500 text-sm">
               Enter your Gmail address to receive an OTP
->>>>>>> fe and be
             </p>
           </div>
 
           <form onSubmit={handleSignIn} className="flex flex-col gap-4">
             <input
-<<<<<<< HEAD
-              type="text"
-              placeholder="Enter username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-=======
               type="email"
               placeholder="Enter your Gmail address"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
->>>>>>> fe and be
               className="w-full h-11 px-4 rounded-lg bg-white border border-gray-200 text-sm text-gray-700 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-[#134C62]/30 transition"
               autoFocus
             />
 
-<<<<<<< HEAD
-            <Button
-              type="submit"
-              className="w-full h-11 bg-[#134C62] hover:bg-[#0e3a4d] text-white font-bold text-sm rounded-lg transition-colors"
-            >
-              Sign In
-=======
             {error && (
               <p className="text-sm text-red-600" role="alert">
                 {error}
@@ -166,7 +126,6 @@ export default function SignIn() {
               className="w-full h-11 bg-[#134C62] hover:bg-[#0e3a4d] disabled:bg-[#134C62]/60 text-white font-bold text-sm rounded-lg transition-colors"
             >
               {isSubmitting ? "Requesting OTP..." : "Sign In"}
->>>>>>> fe and be
             </Button>
           </form>
 

@@ -29,11 +29,7 @@ function App() {
       <Route path="/dashboard" element={<MainLayout><Dashboard /></MainLayout>} />
       <Route path="/procurement" element={<MainLayout><Procurement /></MainLayout>} />
       <Route path="/add-procurement" element={<MainLayout><AddProcurement /></MainLayout>} />
-<<<<<<< HEAD
-      <Route path="/ppmp" element={<MainLayout><PPMP /></MainLayout>} />
-=======
       {/* <Route path="/ppmp" element={<MainLayout><PPMP /></MainLayout>} /> */}
->>>>>>> fe and be
       <Route path="/purchase-request" element={<MainLayout><PurchaseRequest /></MainLayout>} />
       <Route path="/create-purchase-request" element={<MainLayout><CreatePurchaseRequest /></MainLayout>} />
 

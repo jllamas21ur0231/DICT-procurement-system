@@ -1,36 +1,3 @@
-<<<<<<< HEAD
-import '../css/Dashboard.css'
-
-export default function Dashboard() {
-  const stats = [
-    { number: 30, label: 'On-going', sublabel: 'Procurements', color: 'text-yellow-500' },
-    { number: 40, label: 'Approved', sublabel: 'Procurements', color: 'text-teal-600' },
-    { number: 10, label: 'Disapproved', sublabel: 'Procurements', color: 'text-red-400' }
-  ];
-
-  const procurements = [
-    { id: 'RI-2023-02-004', doc: 'Document 1', type: 'Small Value Procurement', status: 'On-going', date: 'March 12, 2023' },
-    { id: 'RI-2023-01-005', doc: 'Document 2', type: 'Small Value Procurement', status: 'Disapproved', date: 'March 17, 2023' },
-    { id: 'RI-2023-02-006', doc: 'Document 3', type: 'Small Value Procurement', status: 'On-going', date: 'March 21, 2023' },
-    { id: 'RI-2023-02-007', doc: 'Document 4', type: 'Small Value Procurement', status: 'On-going', date: 'March 26, 2023' },
-    { id: 'RI-2023-02-004', doc: 'Document 1', type: 'Small Value Procurement', status: 'Approved', date: 'March 27, 2023' },
-    { id: 'RI-2023-01-005', doc: 'Document 2', type: 'Small Value Procurement', status: 'On-going', date: 'March 29, 2023' }
-  ];
-
-  const getStatusStyle = (status) => {
-    switch (status) {
-      case 'On-going':
-        return 'bg-yellow-400 text-black';
-      case 'Approved':
-        return 'bg-teal-600 text-white';
-      case 'Disapproved':
-        return 'bg-red-500 text-white';
-      default:
-        return '';
-    }
-  };
-
-=======
 import { useEffect, useState } from "react";
 import "../css/Dashboard.css";
 
@@ -143,7 +110,6 @@ export default function Dashboard() {
     { number: stats.disapproved, label: "Disapproved", sublabel: "Procurements", color: "text-red-400" },
   ];
 
->>>>>>> fe and be
   return (
     <div>
         {/* Dashboard Content */}
@@ -152,11 +118,7 @@ export default function Dashboard() {
           
           {/* Stats Cards */}
           <div className="grid grid-cols-3 gap-6 mb-8">
-<<<<<<< HEAD
-            {stats.map((stat, index) => (
-=======
             {statCards.map((stat, index) => (
->>>>>>> fe and be
               <div key={index} className="bg-white border-2 border-black-300 rounded-2xl p-8 text-center">
                 <div className={`text-6xl font-bold ${stat.color} mb-2`}>{stat.number}</div>
                 <div className="text-lg font-semibold">{stat.label}</div>
@@ -177,19 +139,6 @@ export default function Dashboard() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <tbody>
-<<<<<<< HEAD
-                  {procurements.map((item, index) => (
-                    <tr key={index} className="border-b hover:bg-gray-50">
-                      <td className="px-6 py-4 text-red-500 font-semibold">{item.id}</td>
-                      <td className="px-6 py-4 font-medium">{item.doc}</td>
-                      <td className="px-6 py-4 text-black-700">{item.type}</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-4 py-1 rounded-full text-sm font-medium ${getStatusStyle(item.status)}`}>
-                          {item.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-black-700">{item.date}</td>
-=======
                   {loading && (
                     <tr>
                       <td colSpan={5} className="px-6 py-6 text-center text-gray-500">
@@ -235,7 +184,6 @@ export default function Dashboard() {
                       <td className="px-6 py-4 text-black-700">
                         {formatDate(item.updated_at || item.created_at)}
                       </td>
->>>>>>> fe and be
                     </tr>
                   ))}
                 </tbody>

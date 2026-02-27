@@ -46,11 +46,7 @@ const SignOutIcon = () => (
 const NAV_ITEMS = [
   { label: "Dashboard", icon: <DashboardIcon />, to: "/dashboard" },
   { label: "Procurement", icon: <ProcurementIcon />, to: "/procurement" },
-<<<<<<< HEAD
-  { label: "PPMP", icon: <PPMPIcon />, to: "/ppmp" },
-=======
   // { label: "PPMP", icon: <PPMPIcon />, to: "/ppmp" },
->>>>>>> fe and be
   { label: "Purchase Request", icon: <PurchaseIcon />, to: "/purchase-request" },
 ];
 

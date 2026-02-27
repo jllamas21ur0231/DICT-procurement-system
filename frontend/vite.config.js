@@ -19,8 +19,6 @@ export default defineConfig({
     tailwindcss(),
     react()
   ],
-<<<<<<< HEAD
-=======
   server: {
     proxy: {
       '/api': {
@@ -40,7 +38,6 @@ export default defineConfig({
       },
     },
   },
->>>>>>> fe and be
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
