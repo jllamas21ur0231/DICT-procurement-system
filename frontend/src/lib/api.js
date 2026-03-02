@@ -23,6 +23,14 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  getProjects() {
+    return fetch('/projects', { credentials: 'include', headers: { Accept: 'application/json' } })
+      .then((r) => r.json());
+  },
+  getProcurementModes() {
+    return fetch('/procurement-modes', { credentials: 'include', headers: { Accept: 'application/json' } })
+      .then((r) => r.json());
+  },
   createProcurement(data) {
     return request('/procurements', { method: 'POST', body: data });
   },

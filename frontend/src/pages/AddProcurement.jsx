@@ -1,10 +1,30 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { api } from '../lib/api';
 
 export default function AddProcurement() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileType, setFileType] = useState('');
   const fileInputRef = useRef(null);
+
+  // Reference data from backend
+  const [projects, setProjects] = useState([]);
+  const [modes, setModes] = useState([]);
+  const [refLoading, setRefLoading] = useState(true);
+  const [refError, setRefError] = useState(null);
+
+  useEffect(() => {
+    setRefLoading(true);
+    Promise.all([api.getProjects(), api.getProcurementModes()])
+      .then(([projectsData, modesData]) => {
+        setProjects(projectsData);
+        setModes(modesData);
+      })
+      .catch((err) => {
+        setRefError(err.message || 'Failed to load form data.');
+      })
+      .finally(() => setRefLoading(false));
+  }, []);
 
   const openModal = () => {
     setIsModalOpen(true);
@@ -43,7 +63,7 @@ export default function AddProcurement() {
     <div>
       <a href="/procurement" className="inline-flex items-center mb-6 text-gray-700 hover:text-[#03445D]">
         <svg className="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 8 14">
-            <path stroke="black" strokeLinecap="round" strokeLinejoin="round" stroke-width="2" d="M7 1 1.3 6.326a.91.91 0 0 0 0 1.348L7 13"/>
+          <path stroke="black" strokeLinecap="round" strokeLinejoin="round" stroke-width="2" d="M7 1 1.3 6.326a.91.91 0 0 0 0 1.348L7 13" />
         </svg>
       </a>
 
@@ -51,6 +71,11 @@ export default function AddProcurement() {
         <h1 className="text-2xl font-bold text-black mb-8">New Procurement</h1>
 
         <div className="space-y-8">
+          {refError && (
+            <div className="px-4 py-3 bg-red-50 border border-red-300 rounded-lg text-sm text-red-700">
+              ⚠️ {refError} — Please refresh the page or check your connection.
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
             <div className="md:col-span-5">
               <label htmlFor="procurement_title" className="block mb-1.5 text-sm font-medium text-[#03445D]">
@@ -71,26 +96,38 @@ export default function AddProcurement() {
               </label>
               <select
                 id="mode_of_procurement"
-                name="mode_of_procurement"
-                className="w-full px-4 py-2.5 bg-gray-50 border border-black rounded-lg text-sm focus:ring-2 focus:ring-black focus:border-black outline-none"
-                defaultValue="Small Value Procurement"
+                name="procurement_mode_id"
+                className="w-full px-4 py-2.5 bg-gray-50 border border-black rounded-lg text-sm focus:ring-2 focus:ring-black focus:border-black outline-none disabled:opacity-60"
+                disabled={refLoading}
+                required
               >
-                <option>Small Value Procurement</option>
-                <option>Public Bidding</option>
-                <option>Direct Contracting</option>
+                <option value="">Select mode...</option>
+                {modes.map((mode) => (
+                  <option key={mode.id} value={mode.id}>
+                    {mode.name}{mode.code ? ` (${mode.code})` : ''}
+                  </option>
+                ))}
               </select>
             </div>
 
             <div className="md:col-span-2">
-              <label htmlFor="project" className="block mb-1.5 text-sm font-medium text-[#03445D]">
+              <label htmlFor="project_id" className="block mb-1.5 text-sm font-medium text-[#03445D]">
                 Project
               </label>
-              <input
-                type="text"
-                id="project"
-                name="project"
-                className="w-full px-4 py-2.5 bg-gray-50 border border-black rounded-lg text-sm focus:ring-2 focus:ring-black focus:border-black outline-none"
-              />
+              <select
+                id="project_id"
+                name="project_id"
+                className="w-full px-4 py-2.5 bg-gray-50 border border-black rounded-lg text-sm focus:ring-2 focus:ring-black focus:border-black outline-none disabled:opacity-60"
+                disabled={refLoading}
+                required
+              >
+                <option value="">Select project...</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <div className="md:col-span-1">
@@ -119,8 +156,8 @@ export default function AddProcurement() {
                 <p className="text-sm font-medium text-black mb-2">File Name</p>
               </div>
               <div className="min-h-[80px] flex items-center justify-center text-sm text-gray-500 italic">
-                  No files attached yet
-                </div>
+                No files attached yet
+              </div>
             </div>
 
             <div className="md:col-span-4">

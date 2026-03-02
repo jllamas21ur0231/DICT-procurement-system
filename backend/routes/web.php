@@ -3,6 +3,8 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProcurementController;
+use App\Http\Controllers\ProcurementModeController;
+use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\PurchaseRequestController;
 use App\Http\Controllers\ReportController;
 use Illuminate\Support\Facades\Route;
@@ -58,6 +60,10 @@ Route::middleware(['auth', 'active.device'])->group(function (): void {
         Route::patch('/{notification}/read', [NotificationController::class, 'markRead']);
         Route::patch('/read-all', [NotificationController::class, 'markAllRead']);
     });
+
+    // reference data routes (projects & modes)
+    Route::get('/projects', [ProjectController::class, 'index']);
+    Route::get('/procurement-modes', [ProcurementModeController::class, 'index']);
 
     // reports routes
     Route::prefix('reports')->group(function (): void {
