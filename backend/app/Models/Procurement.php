@@ -12,8 +12,8 @@ class Procurement extends Model
     protected $fillable = [
         'procurement_no',
         'title',
-        'mode_of_procurement',
-        'project',
+        'procurement_mode_id',
+        'project_id',
         'status',
         'description',
         'requested_by',
@@ -27,6 +27,16 @@ class Procurement extends Model
     public function requester()
     {
         return $this->belongsTo(User::class, 'requested_by');
+    }
+
+    public function procurementMode()
+    {
+        return $this->belongsTo(ProcurementMode::class, 'procurement_mode_id');
+    }
+
+    public function projectRecord()
+    {
+        return $this->belongsTo(Project::class, 'project_id');
     }
 
     public function pdfs()

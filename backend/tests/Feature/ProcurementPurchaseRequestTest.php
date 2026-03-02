@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Http\Middleware\EnsureActiveDeviceSession;
+use App\Models\ProcurementMode;
+use App\Models\Project;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -14,11 +16,13 @@ class ProcurementPurchaseRequestTest extends TestCase
     public function test_creating_procurement_also_creates_purchase_request_and_items(): void
     {
         $user = User::factory()->create();
+        $project = Project::firstOrCreate(['name' => 'Office Upgrade'], ['is_active' => true]);
+        $mode = ProcurementMode::firstOrCreate(['name' => 'Shopping'], ['legal_basis' => 'RA 12009', 'is_active' => true]);
 
         $payload = [
             'title' => 'Office Chairs Purchase',
-            'mode_of_procurement' => 'Shopping',
-            'project' => 'Office Upgrade',
+            'procurement_mode_id' => $mode->id,
+            'project_id' => $project->id,
             'description' => 'Procurement for ergonomic chairs',
             'purchase_request' => [
                 'office' => 'Admin Office',
@@ -64,13 +68,15 @@ class ProcurementPurchaseRequestTest extends TestCase
     public function test_updating_purchase_request_and_items_uses_purchase_request_endpoints(): void
     {
         $user = User::factory()->create();
+        $project = Project::firstOrCreate(['name' => 'Initial Project'], ['is_active' => true]);
+        $mode = ProcurementMode::firstOrCreate(['name' => 'Shopping'], ['legal_basis' => 'RA 12009', 'is_active' => true]);
 
         $createResponse = $this->withoutMiddleware(EnsureActiveDeviceSession::class)
             ->actingAs($user)
             ->postJson('/procurements', [
                 'title' => 'Initial Procurement',
-                'mode_of_procurement' => 'Shopping',
-                'project' => 'Initial Project',
+                'procurement_mode_id' => $mode->id,
+                'project_id' => $project->id,
                 'purchase_request' => [
                     'office' => 'Admin Office',
                     'date_created' => '2026-02-26',
@@ -147,13 +153,15 @@ class ProcurementPurchaseRequestTest extends TestCase
     public function test_purchase_request_and_item_support_boolean_delete_and_restore(): void
     {
         $user = User::factory()->create();
+        $project = Project::firstOrCreate(['name' => 'Deletion Project'], ['is_active' => true]);
+        $mode = ProcurementMode::firstOrCreate(['name' => 'Shopping'], ['legal_basis' => 'RA 12009', 'is_active' => true]);
 
         $createResponse = $this->withoutMiddleware(EnsureActiveDeviceSession::class)
             ->actingAs($user)
             ->postJson('/procurements', [
                 'title' => 'Deletion Test Procurement',
-                'mode_of_procurement' => 'Shopping',
-                'project' => 'Deletion Project',
+                'procurement_mode_id' => $mode->id,
+                'project_id' => $project->id,
                 'purchase_request' => [
                     'office' => 'Admin Office',
                     'date_created' => '2026-02-26',

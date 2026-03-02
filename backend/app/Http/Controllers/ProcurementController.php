@@ -38,10 +38,10 @@ class ProcurementController extends Controller
             $query->where(function ($innerQuery) use ($queryText): void {
                 $innerQuery->where('procurement_no', $queryText)
                     ->orWhere('title', $queryText)
-                    ->orWhere('mode_of_procurement', $queryText)
-                    ->orWhere('project', $queryText)
                     ->orWhere('status', $queryText)
-                    ->orWhere('description', $queryText);
+                    ->orWhere('description', $queryText)
+                    ->orWhereHas('procurementMode', fn ($modeQuery) => $modeQuery->where('name', $queryText))
+                    ->orWhereHas('projectRecord', fn ($projectQuery) => $projectQuery->where('name', $queryText));
 
                 if (ctype_digit($queryText)) {
                     $innerQuery->orWhere('id', (int) $queryText);
@@ -71,10 +71,10 @@ class ProcurementController extends Controller
                             $variantQuery->{$method}(function ($fieldQuery) use ($variant): void {
                                 $fieldQuery->where('procurement_no', 'like', "%{$variant}%")
                                     ->orWhere('title', 'like', "%{$variant}%")
-                                    ->orWhere('mode_of_procurement', 'like', "%{$variant}%")
-                                    ->orWhere('project', 'like', "%{$variant}%")
                                     ->orWhere('status', 'like', "%{$variant}%")
-                                    ->orWhere('description', 'like', "%{$variant}%");
+                                    ->orWhere('description', 'like', "%{$variant}%")
+                                    ->orWhereHas('procurementMode', fn ($modeQuery) => $modeQuery->where('name', 'like', "%{$variant}%"))
+                                    ->orWhereHas('projectRecord', fn ($projectQuery) => $projectQuery->where('name', 'like', "%{$variant}%"));
 
                                 if (ctype_digit($variant)) {
                                     $fieldQuery->orWhere('id', (int) $variant);
@@ -113,8 +113,8 @@ class ProcurementController extends Controller
     {
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'mode_of_procurement' => ['required', 'string', 'max:255'],
-            'project' => ['required', 'string', 'max:255'],
+            'procurement_mode_id' => ['required', 'integer', 'exists:procurement_modes,id'],
+            'project_id' => ['required', 'integer', 'exists:projects,id'],
             'status' => ['nullable', 'string', 'max:50'],
             'description' => ['nullable', 'string'],
             'purchase_request' => ['required', 'array'],
@@ -140,8 +140,8 @@ class ProcurementController extends Controller
             $procurement = Procurement::create([
                 'procurement_no' => 'TMP-'.Str::uuid(),
                 'title' => $validated['title'],
-                'mode_of_procurement' => $validated['mode_of_procurement'],
-                'project' => $validated['project'],
+                'procurement_mode_id' => $validated['procurement_mode_id'],
+                'project_id' => $validated['project_id'],
                 'status' => $validated['status'] ?? 'pending',
                 'description' => $validated['description'] ?? null,
                 'requested_by' => $request->user()->id,
@@ -205,8 +205,8 @@ class ProcurementController extends Controller
 
         $validated = $request->validate([
             'title' => ['sometimes', 'string', 'max:255'],
-            'mode_of_procurement' => ['sometimes', 'string', 'max:255'],
-            'project' => ['sometimes', 'string', 'max:255'],
+            'procurement_mode_id' => ['sometimes', 'integer', 'exists:procurement_modes,id'],
+            'project_id' => ['sometimes', 'integer', 'exists:projects,id'],
             'status' => ['sometimes', 'string', 'max:50'],
             'description' => ['nullable', 'string'],
             'pdfs' => ['sometimes', 'array'],
@@ -226,14 +226,24 @@ class ProcurementController extends Controller
 
         DB::transaction(function () use ($procurement, $validated): void {
             $originalStatus = $procurement->status;
-
-            $procurement->fill(array_filter([
+            $payload = array_filter([
                 'title' => $validated['title'] ?? null,
-                'mode_of_procurement' => $validated['mode_of_procurement'] ?? null,
-                'project' => $validated['project'] ?? null,
                 'status' => $validated['status'] ?? null,
-                'description' => array_key_exists('description', $validated) ? $validated['description'] : null,
-            ], static fn ($value): bool => $value !== null));
+            ], static fn ($value): bool => $value !== null);
+
+            if (array_key_exists('procurement_mode_id', $validated)) {
+                $payload['procurement_mode_id'] = $validated['procurement_mode_id'];
+            }
+
+            if (array_key_exists('project_id', $validated)) {
+                $payload['project_id'] = $validated['project_id'];
+            }
+
+            if (array_key_exists('description', $validated)) {
+                $payload['description'] = $validated['description'];
+            }
+
+            $procurement->fill($payload);
 
             if (array_key_exists('description', $validated) && $validated['description'] === null) {
                 $procurement->description = null;
@@ -524,6 +534,8 @@ class ProcurementController extends Controller
     {
         return [
             'requester',
+            'projectRecord',
+            'procurementMode',
             'pdfs',
             'purchaseRequest' => function ($purchaseRequestQuery): void {
                 $purchaseRequestQuery->where('deleted', false)

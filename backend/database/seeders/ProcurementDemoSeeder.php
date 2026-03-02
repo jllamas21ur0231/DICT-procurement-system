@@ -4,6 +4,8 @@ namespace Database\Seeders;
 
 use App\Models\Item;
 use App\Models\Procurement;
+use App\Models\ProcurementMode;
+use App\Models\Project;
 use App\Models\PurchaseRequest;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -15,9 +17,27 @@ class ProcurementDemoSeeder extends Seeder
     {
         $offices = ['Admin Office', 'Budget Office', 'Engineering Office', 'General Services', 'ICT Office'];
         $units = ['pcs', 'box', 'set'];
-        $modes = ['Shopping', 'Bidding', 'Direct Contracting'];
+        $modes = ['Shopping', 'Public Bidding', 'Direct Contracting'];
         $projects = ['Office Upgrade', 'IT Infrastructure', 'Facilities Maintenance'];
         $statuses = ['pending', 'ongoing', 'approved'];
+
+        $modeModels = collect($modes)->mapWithKeys(function (string $mode): array {
+            $record = ProcurementMode::query()->firstOrCreate(
+                ['name' => $mode],
+                ['legal_basis' => 'RA 12009', 'is_active' => true]
+            );
+
+            return [$mode => $record];
+        });
+
+        $projectModels = collect($projects)->mapWithKeys(function (string $project): array {
+            $record = Project::query()->firstOrCreate(
+                ['name' => $project],
+                ['is_active' => true]
+            );
+
+            return [$project => $record];
+        });
 
         $user = User::query()->where('is_active', true)->first();
         if (! $user) {
@@ -41,11 +61,14 @@ class ProcurementDemoSeeder extends Seeder
         }
 
         for ($i = $existingProcurements + 1; $i <= $target; $i++) {
+            $modeName = $modes[array_rand($modes)];
+            $projectName = $projects[array_rand($projects)];
+
             $procurement = Procurement::create([
                 'procurement_no' => 'TMP-'.Str::uuid(),
                 'title' => 'Office Supply Batch #'.$i,
-                'mode_of_procurement' => $modes[array_rand($modes)],
-                'project' => $projects[array_rand($projects)],
+                'procurement_mode_id' => $modeModels[$modeName]->id,
+                'project_id' => $projectModels[$projectName]->id,
                 'status' => $statuses[array_rand($statuses)],
                 'description' => 'Generated sample procurement record #'.$i,
                 'requested_by' => $user->id,
@@ -66,7 +89,7 @@ class ProcurementDemoSeeder extends Seeder
             'office' => $offices[array_rand($offices)],
             'date_created' => now()->subDays(random_int(0, 30))->toDateString(),
             'responsibility_center_code' => 'RCC-'.str_pad((string) random_int(1, 999), 3, '0', STR_PAD_LEFT),
-            'purpose' => 'Generated purchase request for '.$procurement->project,
+            'purpose' => 'Generated purchase request for '.($procurement->projectRecord?->name ?? 'Uncategorized Project'),
         ]);
 
         $purchaseRequest->purchase_request_number = sprintf('PUR-%s-%06d', now()->format('Y'), $purchaseRequest->id);
