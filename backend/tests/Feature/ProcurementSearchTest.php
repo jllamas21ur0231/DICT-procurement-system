@@ -100,4 +100,62 @@ class ProcurementSearchTest extends TestCase
             ->assertOk()
             ->assertJsonCount(2, 'data');
     }
+
+    public function test_it_applies_advanced_filters_by_names_and_date_range_via_filter_endpoint(): void
+    {
+        $requesterA = User::factory()->create([
+            'first_name' => 'Alice',
+            'last_name' => 'Requester',
+        ]);
+        $requesterB = User::factory()->create([
+            'first_name' => 'Bob',
+            'last_name' => 'Requester',
+        ]);
+
+        $shopping = ProcurementMode::firstOrCreate(['name' => 'Shopping'], ['legal_basis' => 'RA 12009', 'is_active' => true]);
+        $bidding = ProcurementMode::firstOrCreate(['name' => 'Bidding'], ['legal_basis' => 'RA 12009', 'is_active' => true]);
+        $projectA = Project::firstOrCreate(['name' => 'Project A'], ['is_active' => true]);
+        $projectB = Project::firstOrCreate(['name' => 'Project B'], ['is_active' => true]);
+        $today = now()->toDateString();
+
+        $matched = Procurement::create([
+            'procurement_no' => 'PR-2026-100001',
+            'title' => 'Matched Procurement',
+            'procurement_mode_id' => $shopping->id,
+            'project_id' => $projectA->id,
+            'status' => 'pending',
+            'description' => 'Should match filters',
+            'requested_by' => $requesterA->id,
+            'deleted' => false,
+        ]);
+
+        Procurement::create([
+            'procurement_no' => 'PR-2026-100002',
+            'title' => 'Different Status',
+            'procurement_mode_id' => $shopping->id,
+            'project_id' => $projectA->id,
+            'status' => 'approved',
+            'description' => 'Should not match filters',
+            'requested_by' => $requesterA->id,
+            'deleted' => false,
+        ]);
+
+        Procurement::create([
+            'procurement_no' => 'PR-2026-100003',
+            'title' => 'Different Requester',
+            'procurement_mode_id' => $bidding->id,
+            'project_id' => $projectB->id,
+            'status' => 'pending',
+            'description' => 'Should not match filters',
+            'requested_by' => $requesterB->id,
+            'deleted' => false,
+        ]);
+
+        $this->withoutMiddleware(EnsureActiveDeviceSession::class)
+            ->actingAs($requesterA)
+            ->getJson('/procurements/filter?status=pending&requested_by=Alice+Requester&project=Project+A&procurement_mode=Shopping&date_from='.$today.'&date_to='.$today)
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $matched->id);
+    }
 }

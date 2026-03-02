@@ -87,11 +87,12 @@ class ProcurementController extends Controller
         });
 
         $cacheKey = sprintf(
-            'procurements:search:%s:%d:%s:%s:%s',
+            'procurements:search:%s:%d:%s:%s:%s:%s',
             (string) ($request->user()?->id ?? 'guest'),
             $perPage,
             $queryText,
             $exact ? '1' : '0',
+            md5(json_encode(['include_deleted' => $includeDeleted, 'async' => $async], JSON_THROW_ON_ERROR)),
             (string) ($cursor ?? 'page1')
         );
 
@@ -102,17 +103,62 @@ class ProcurementController extends Controller
         return response()->json($result);
     }
 
-    public function index(Request $request): JsonResponse
+    public function filter(Request $request): JsonResponse
     {
-        $includeDeleted = filter_var($request->query('include_deleted', false), FILTER_VALIDATE_BOOLEAN);
+        $validated = $request->validate([
+            'status' => ['nullable', 'string', 'max:50'],
+            'requested_by' => ['nullable', 'string', 'max:255'],
+            'project' => ['nullable', 'string', 'max:255'],
+            'procurement_mode' => ['nullable', 'string', 'max:255'],
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'cursor' => ['nullable', 'string'],
+            'async' => ['nullable', 'boolean'],
+        ]);
 
-        $query = Procurement::query()->with($this->procurementRelations())->latest('updated_at');
+        $includeDeleted = filter_var($request->query('include_deleted', false), FILTER_VALIDATE_BOOLEAN);
+        $perPage = (int) ($validated['per_page'] ?? 15);
+        $cursor = $validated['cursor'] ?? null;
+        $async = filter_var($validated['async'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        $query = Procurement::query()
+            ->with($this->procurementRelations())
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id');
 
         if (! $includeDeleted) {
             $query->where('deleted', false);
         }
 
-        return response()->json($query->paginate(15));
+        $this->applyAdvancedNameFilters($query, $validated);
+
+        return response()->json($this->buildPaginatedResponse($query, $perPage, $cursor, $async));
+    }
+
+    public function index(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'cursor' => ['nullable', 'string'],
+            'async' => ['nullable', 'boolean'],
+        ]);
+
+        $includeDeleted = filter_var($request->query('include_deleted', false), FILTER_VALIDATE_BOOLEAN);
+        $perPage = (int) ($validated['per_page'] ?? 15);
+        $cursor = $validated['cursor'] ?? null;
+        $async = filter_var($validated['async'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        $query = Procurement::query()
+            ->with($this->procurementRelations())
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id');
+
+        if (! $includeDeleted) {
+            $query->where('deleted', false);
+        }
+
+        return response()->json($this->buildPaginatedResponse($query, $perPage, $cursor, $async));
     }
 
     public function show(Procurement $procurement): JsonResponse
@@ -548,6 +594,52 @@ class ProcurementController extends Controller
         }
 
         return $query->paginate($perPage);
+    }
+
+    private function applyAdvancedNameFilters($query, array $validated): void
+    {
+        if (array_key_exists('status', $validated) && $validated['status'] !== null && trim($validated['status']) !== '') {
+            $query->where('status', trim((string) $validated['status']));
+        }
+
+        if (array_key_exists('requested_by', $validated) && $validated['requested_by'] !== null && trim($validated['requested_by']) !== '') {
+            $nameQuery = trim((string) $validated['requested_by']);
+            $tokens = preg_split('/\s+/', $nameQuery, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+            $query->whereHas('requester', function ($requesterQuery) use ($tokens, $nameQuery): void {
+                if ($tokens === []) {
+                    $this->applyRequesterLikeSearch($requesterQuery, $nameQuery);
+
+                    return;
+                }
+
+                foreach ($tokens as $token) {
+                    $requesterQuery->where(function ($nameFieldQuery) use ($token): void {
+                        $nameFieldQuery->where('first_name', 'like', "%{$token}%")
+                            ->orWhere('middle_name', 'like', "%{$token}%")
+                            ->orWhere('last_name', 'like', "%{$token}%");
+                    });
+                }
+            });
+        }
+
+        if (array_key_exists('project', $validated) && $validated['project'] !== null && trim($validated['project']) !== '') {
+            $projectName = trim((string) $validated['project']);
+            $query->whereHas('projectRecord', fn ($projectQuery) => $projectQuery->where('name', 'like', "%{$projectName}%"));
+        }
+
+        if (array_key_exists('procurement_mode', $validated) && $validated['procurement_mode'] !== null && trim($validated['procurement_mode']) !== '') {
+            $modeName = trim((string) $validated['procurement_mode']);
+            $query->whereHas('procurementMode', fn ($modeQuery) => $modeQuery->where('name', 'like', "%{$modeName}%"));
+        }
+
+        if (array_key_exists('date_from', $validated) && $validated['date_from'] !== null) {
+            $query->whereDate('created_at', '>=', $validated['date_from']);
+        }
+
+        if (array_key_exists('date_to', $validated) && $validated['date_to'] !== null) {
+            $query->whereDate('created_at', '<=', $validated['date_to']);
+        }
     }
 
     private function applyRequesterLikeSearch($requesterQuery, string $value): void

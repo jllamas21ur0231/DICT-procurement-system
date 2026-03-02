@@ -27,6 +27,7 @@ Route::middleware(['auth', 'active.device'])->group(function (): void {
     Route::prefix('procurements')->group(function (): void {
         Route::get('/', [ProcurementController::class, 'index']);
         Route::get('/search', [ProcurementController::class, 'search'])->middleware('throttle:procurement-search');
+        Route::get('/filter', [ProcurementController::class, 'filter']);
         Route::post('/', [ProcurementController::class, 'store']);
         Route::get('/{procurement}', [ProcurementController::class, 'show']);
         Route::put('/{procurement}', [ProcurementController::class, 'update']);
