@@ -53,9 +53,13 @@ class ProcurementSearchTest extends TestCase
             ->assertJsonPath('data.0.procurement_no', 'PR-2026-000001');
     }
 
-    public function test_it_supports_exact_search_for_procurement_number_and_id(): void
+    public function test_it_supports_exact_search_for_procurement_number_and_requester_name(): void
     {
-        $user = User::factory()->create();
+        $user = User::factory()->create([
+            'first_name' => 'Juan',
+            'middle_name' => 'Santos',
+            'last_name' => 'Dela Cruz',
+        ]);
         $shopping = ProcurementMode::firstOrCreate(['name' => 'Shopping'], ['legal_basis' => 'RA 12009', 'is_active' => true]);
         $bidding = ProcurementMode::firstOrCreate(['name' => 'Bidding'], ['legal_basis' => 'RA 12009', 'is_active' => true]);
         $facility = Project::firstOrCreate(['name' => 'Facility Maintenance'], ['is_active' => true]);
@@ -92,9 +96,8 @@ class ProcurementSearchTest extends TestCase
 
         $this->withoutMiddleware(EnsureActiveDeviceSession::class)
             ->actingAs($user)
-            ->getJson('/procurements/search?q='.$target->id.'&exact=true')
+            ->getJson('/procurements/search?q=Juan Dela&exact=true')
             ->assertOk()
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.procurement_no', 'PR-2026-009999');
+            ->assertJsonCount(2, 'data');
     }
 }

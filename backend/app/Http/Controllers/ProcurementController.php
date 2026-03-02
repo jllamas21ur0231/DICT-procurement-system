@@ -9,6 +9,7 @@ use App\Models\PurchaseRequest;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -21,14 +22,21 @@ class ProcurementController extends Controller
         $validated = $request->validate([
             'q' => ['required', 'string', 'max:255'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'cursor' => ['nullable', 'string'],
+            'async' => ['nullable', 'boolean'],
         ]);
 
         $queryText = trim($validated['q']);
         $exact = filter_var($request->query('exact', false), FILTER_VALIDATE_BOOLEAN);
         $includeDeleted = filter_var($request->query('include_deleted', false), FILTER_VALIDATE_BOOLEAN);
         $perPage = (int) ($validated['per_page'] ?? 15);
+        $cursor = $validated['cursor'] ?? null;
+        $async = filter_var($validated['async'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-        $query = Procurement::query()->with($this->procurementRelations())->latest('updated_at');
+        $query = Procurement::query()
+            ->with($this->procurementRelations())
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id');
 
         if (! $includeDeleted) {
             $query->where('deleted', false);
@@ -38,17 +46,12 @@ class ProcurementController extends Controller
             $query->where(function ($innerQuery) use ($queryText): void {
                 $innerQuery->where('procurement_no', $queryText)
                     ->orWhere('title', $queryText)
-                    ->orWhere('status', $queryText)
-                    ->orWhere('description', $queryText)
                     ->orWhereHas('procurementMode', fn ($modeQuery) => $modeQuery->where('name', $queryText))
-                    ->orWhereHas('projectRecord', fn ($projectQuery) => $projectQuery->where('name', $queryText));
-
-                if (ctype_digit($queryText)) {
-                    $innerQuery->orWhere('id', (int) $queryText);
-                }
+                    ->orWhereHas('projectRecord', fn ($projectQuery) => $projectQuery->where('name', $queryText))
+                    ->orWhereHas('requester', fn ($requesterQuery) => $this->applyRequesterExactSearch($requesterQuery, $queryText));
             });
 
-            return response()->json($query->paginate($perPage));
+            return response()->json($this->buildPaginatedResponse($query, $perPage, $cursor, $async));
         }
 
         $terms = preg_split('/\s+/', $queryText, -1, PREG_SPLIT_NO_EMPTY) ?: [];
@@ -71,14 +74,9 @@ class ProcurementController extends Controller
                             $variantQuery->{$method}(function ($fieldQuery) use ($variant): void {
                                 $fieldQuery->where('procurement_no', 'like', "%{$variant}%")
                                     ->orWhere('title', 'like', "%{$variant}%")
-                                    ->orWhere('status', 'like', "%{$variant}%")
-                                    ->orWhere('description', 'like', "%{$variant}%")
                                     ->orWhereHas('procurementMode', fn ($modeQuery) => $modeQuery->where('name', 'like', "%{$variant}%"))
-                                    ->orWhereHas('projectRecord', fn ($projectQuery) => $projectQuery->where('name', 'like', "%{$variant}%"));
-
-                                if (ctype_digit($variant)) {
-                                    $fieldQuery->orWhere('id', (int) $variant);
-                                }
+                                    ->orWhereHas('projectRecord', fn ($projectQuery) => $projectQuery->where('name', 'like', "%{$variant}%"))
+                                    ->orWhereHas('requester', fn ($requesterQuery) => $this->applyRequesterLikeSearch($requesterQuery, $variant));
                             });
                         }
                     });
@@ -88,7 +86,20 @@ class ProcurementController extends Controller
             $groupQuery->orWhere('procurement_no', $queryText);
         });
 
-        return response()->json($query->paginate($perPage));
+        $cacheKey = sprintf(
+            'procurements:search:%s:%d:%s:%s:%s',
+            (string) ($request->user()?->id ?? 'guest'),
+            $perPage,
+            $queryText,
+            $exact ? '1' : '0',
+            (string) ($cursor ?? 'page1')
+        );
+
+        $result = Cache::remember($cacheKey, now()->addSeconds(10), function () use ($query, $perPage, $cursor, $async) {
+            return $this->buildPaginatedResponse($query, $perPage, $cursor, $async);
+        });
+
+        return response()->json($result);
     }
 
     public function index(Request $request): JsonResponse
@@ -528,6 +539,43 @@ class ProcurementController extends Controller
     private function normalizeSearchToken(string $value): string
     {
         return preg_replace('/(.)\1+/u', '$1', strtolower(trim($value))) ?? strtolower(trim($value));
+    }
+
+    private function buildPaginatedResponse($query, int $perPage, ?string $cursor, bool $async)
+    {
+        if ($async || $cursor !== null) {
+            return $query->cursorPaginate($perPage, ['*'], 'cursor', $cursor);
+        }
+
+        return $query->paginate($perPage);
+    }
+
+    private function applyRequesterLikeSearch($requesterQuery, string $value): void
+    {
+        $requesterQuery->where('first_name', 'like', "%{$value}%")
+            ->orWhere('middle_name', 'like', "%{$value}%")
+            ->orWhere('last_name', 'like', "%{$value}%");
+    }
+
+    private function applyRequesterExactSearch($requesterQuery, string $value): void
+    {
+        $tokens = preg_split('/\s+/', trim($value), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        $requesterQuery->where('first_name', $value)
+            ->orWhere('middle_name', $value)
+            ->orWhere('last_name', $value);
+
+        if (count($tokens) > 1) {
+            $requesterQuery->orWhere(function ($tokenQuery) use ($tokens): void {
+                foreach ($tokens as $token) {
+                    $tokenQuery->where(function ($nameFieldQuery) use ($token): void {
+                        $nameFieldQuery->where('first_name', 'like', "%{$token}%")
+                            ->orWhere('middle_name', 'like', "%{$token}%")
+                            ->orWhere('last_name', 'like', "%{$token}%");
+                    });
+                }
+            });
+        }
     }
 
     private function procurementRelations(): array
