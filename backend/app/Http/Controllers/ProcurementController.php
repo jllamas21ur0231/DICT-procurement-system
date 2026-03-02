@@ -7,6 +7,7 @@ use App\Models\Procurement;
 use App\Models\ProcurementPdf;
 use App\Models\PurchaseRequest;
 use App\Models\User;
+use App\Services\ProcurementRevisionLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -17,6 +18,8 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ProcurementController extends Controller
 {
+    public function __construct(private readonly ProcurementRevisionLogger $revisionLogger) {}
+
     public function search(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -166,6 +169,29 @@ class ProcurementController extends Controller
         return response()->json($procurement->load($this->procurementRelations()));
     }
 
+    public function revisions(Request $request, Procurement $procurement): JsonResponse
+    {
+        if (! $this->canModify($request, $procurement)) {
+            return response()->json([
+                'message' => 'You are not allowed to view revisions for this procurement.',
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $perPage = (int) ($validated['per_page'] ?? 20);
+
+        $revisions = $procurement->revisions()
+            ->with('actor')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->paginate($perPage);
+
+        return response()->json($revisions);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -241,6 +267,24 @@ class ProcurementController extends Controller
                 ]);
             }
 
+            $this->revisionLogger->log(
+                $request,
+                $procurement,
+                'procurement_created',
+                'procurement',
+                (int) $procurement->id,
+                null,
+                [
+                    'procurement_no' => $procurement->procurement_no,
+                    'title' => $procurement->title,
+                    'procurement_mode_id' => $procurement->procurement_mode_id,
+                    'project_id' => $procurement->project_id,
+                    'status' => $procurement->status,
+                    'requested_by' => $procurement->requested_by,
+                ],
+                ['procurement_no', 'title', 'procurement_mode_id', 'project_id', 'status', 'requested_by']
+            );
+
             $this->notifyBudgetOfficersOnSubmission($procurement, $request->user());
 
             return $procurement;
@@ -281,8 +325,16 @@ class ProcurementController extends Controller
             ], 403);
         }
 
-        DB::transaction(function () use ($procurement, $validated): void {
+        DB::transaction(function () use ($request, $procurement, $validated): void {
             $originalStatus = $procurement->status;
+            $before = $procurement->only([
+                'title',
+                'procurement_mode_id',
+                'project_id',
+                'status',
+                'description',
+                'deleted',
+            ]);
             $payload = array_filter([
                 'title' => $validated['title'] ?? null,
                 'status' => $validated['status'] ?? null,
@@ -307,6 +359,29 @@ class ProcurementController extends Controller
             }
 
             $procurement->save();
+
+            $after = $procurement->only([
+                'title',
+                'procurement_mode_id',
+                'project_id',
+                'status',
+                'description',
+                'deleted',
+            ]);
+            [$beforeDiff, $afterDiff, $changedFields] = $this->revisionLogger->extractDiff($before, $after);
+
+            if ($changedFields !== []) {
+                $this->revisionLogger->log(
+                    $request,
+                    $procurement,
+                    'procurement_updated',
+                    'procurement',
+                    (int) $procurement->id,
+                    $beforeDiff,
+                    $afterDiff,
+                    $changedFields
+                );
+            }
 
             if (array_key_exists('pdfs', $validated)) {
                 $procurement->pdfs()->delete();
@@ -430,7 +505,18 @@ class ProcurementController extends Controller
             ], 403);
         }
 
+        $before = ['deleted' => $procurement->deleted];
         $procurement->update(['deleted' => true]);
+        $this->revisionLogger->log(
+            $request,
+            $procurement,
+            'procurement_deleted',
+            'procurement',
+            (int) $procurement->id,
+            $before,
+            ['deleted' => true],
+            ['deleted']
+        );
 
         return response()->json([
             'message' => 'Procurement marked as deleted.',
@@ -445,7 +531,18 @@ class ProcurementController extends Controller
             ], 403);
         }
 
+        $before = ['deleted' => $procurement->deleted];
         $procurement->update(['deleted' => false]);
+        $this->revisionLogger->log(
+            $request,
+            $procurement,
+            'procurement_restored',
+            'procurement',
+            (int) $procurement->id,
+            $before,
+            ['deleted' => false],
+            ['deleted']
+        );
 
         return response()->json([
             'message' => 'Procurement restored successfully.',

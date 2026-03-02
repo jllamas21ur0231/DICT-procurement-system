@@ -48,4 +48,9 @@ class Procurement extends Model
     {
         return $this->hasOne(PurchaseRequest::class);
     }
+
+    public function revisions()
+    {
+        return $this->hasMany(ProcurementRevision::class);
+    }
 }

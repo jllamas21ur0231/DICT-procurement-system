@@ -32,6 +32,7 @@ Route::middleware(['auth', 'active.device'])->group(function (): void {
         Route::get('/filter', [ProcurementController::class, 'filter']);
         Route::post('/', [ProcurementController::class, 'store']);
         Route::get('/{procurement}', [ProcurementController::class, 'show']);
+        Route::get('/{procurement}/revisions', [ProcurementController::class, 'revisions']);
         Route::put('/{procurement}', [ProcurementController::class, 'update']);
         Route::delete('/{procurement}', [ProcurementController::class, 'destroy']);
         Route::patch('/{procurement}/restore', [ProcurementController::class, 'restore']);

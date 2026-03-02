@@ -5,12 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\Item;
 use App\Models\PurchaseRequest;
 use App\Models\User;
+use App\Services\ProcurementRevisionLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class PurchaseRequestController extends Controller
 {
+    public function __construct(private readonly ProcurementRevisionLogger $revisionLogger) {}
+
     public function index(Request $request): JsonResponse
     {
         $includeDeleted = filter_var($request->query('include_deleted', false), FILTER_VALIDATE_BOOLEAN);
@@ -72,8 +75,37 @@ class PurchaseRequestController extends Controller
             'purpose' => ['sometimes', 'string'],
         ]);
 
+        $before = $purchaseRequest->only([
+            'office',
+            'date_created',
+            'responsibility_center_code',
+            'purpose',
+            'deleted',
+        ]);
+
         $purchaseRequest->fill($validated);
         $purchaseRequest->save();
+
+        $after = $purchaseRequest->only([
+            'office',
+            'date_created',
+            'responsibility_center_code',
+            'purpose',
+            'deleted',
+        ]);
+        [$beforeDiff, $afterDiff, $changedFields] = $this->revisionLogger->extractDiff($before, $after);
+        if ($changedFields !== [] && $purchaseRequest->procurement) {
+            $this->revisionLogger->log(
+                $request,
+                $purchaseRequest->procurement,
+                'purchase_request_updated',
+                'purchase_request',
+                (int) $purchaseRequest->id,
+                $beforeDiff,
+                $afterDiff,
+                $changedFields
+            );
+        }
 
         return response()->json([
             'message' => 'Purchase request updated successfully.',
@@ -90,9 +122,22 @@ class PurchaseRequestController extends Controller
             return response()->json(['message' => 'You are not allowed to delete this purchase request.'], 403);
         }
 
-        DB::transaction(function () use ($purchaseRequest): void {
+        DB::transaction(function () use ($request, $purchaseRequest): void {
+            $before = ['deleted' => $purchaseRequest->deleted];
             $purchaseRequest->update(['deleted' => true]);
             $purchaseRequest->items()->update(['deleted' => true]);
+            if ($purchaseRequest->procurement) {
+                $this->revisionLogger->log(
+                    $request,
+                    $purchaseRequest->procurement,
+                    'purchase_request_deleted',
+                    'purchase_request',
+                    (int) $purchaseRequest->id,
+                    $before,
+                    ['deleted' => true],
+                    ['deleted']
+                );
+            }
         });
 
         return response()->json(['message' => 'Purchase request marked as deleted.']);
@@ -104,9 +149,22 @@ class PurchaseRequestController extends Controller
             return response()->json(['message' => 'You are not allowed to restore this purchase request.'], 403);
         }
 
-        DB::transaction(function () use ($purchaseRequest): void {
+        DB::transaction(function () use ($request, $purchaseRequest): void {
+            $before = ['deleted' => $purchaseRequest->deleted];
             $purchaseRequest->update(['deleted' => false]);
             $purchaseRequest->items()->update(['deleted' => false]);
+            if ($purchaseRequest->procurement) {
+                $this->revisionLogger->log(
+                    $request,
+                    $purchaseRequest->procurement,
+                    'purchase_request_restored',
+                    'purchase_request',
+                    (int) $purchaseRequest->id,
+                    $before,
+                    ['deleted' => false],
+                    ['deleted']
+                );
+            }
         });
 
         return response()->json([
@@ -139,6 +197,28 @@ class PurchaseRequestController extends Controller
             'deleted' => false,
         ]);
 
+        if ($purchaseRequest->procurement) {
+            $this->revisionLogger->log(
+                $request,
+                $purchaseRequest->procurement,
+                'item_created',
+                'item',
+                (int) $item->id,
+                null,
+                $item->only([
+                    'item_no',
+                    'stock_no',
+                    'unit',
+                    'item_description',
+                    'item_inclusions',
+                    'quantity',
+                    'unit_cost',
+                    'deleted',
+                ]),
+                ['item_no', 'stock_no', 'unit', 'item_description', 'item_inclusions', 'quantity', 'unit_cost', 'deleted']
+            );
+        }
+
         return response()->json([
             'message' => 'Item created successfully.',
             'item' => $item,
@@ -165,8 +245,41 @@ class PurchaseRequestController extends Controller
             'unit_cost' => ['sometimes', 'numeric', 'min:0'],
         ]);
 
+        $before = $item->only([
+            'item_no',
+            'stock_no',
+            'unit',
+            'item_description',
+            'item_inclusions',
+            'quantity',
+            'unit_cost',
+            'deleted',
+        ]);
         $item->fill($validated);
         $item->save();
+        $after = $item->only([
+            'item_no',
+            'stock_no',
+            'unit',
+            'item_description',
+            'item_inclusions',
+            'quantity',
+            'unit_cost',
+            'deleted',
+        ]);
+        [$beforeDiff, $afterDiff, $changedFields] = $this->revisionLogger->extractDiff($before, $after);
+        if ($changedFields !== [] && $purchaseRequest->procurement) {
+            $this->revisionLogger->log(
+                $request,
+                $purchaseRequest->procurement,
+                'item_updated',
+                'item',
+                (int) $item->id,
+                $beforeDiff,
+                $afterDiff,
+                $changedFields
+            );
+        }
 
         return response()->json([
             'message' => 'Item updated successfully.',
@@ -184,7 +297,20 @@ class PurchaseRequestController extends Controller
             return response()->json(['message' => 'You are not allowed to delete this item.'], 403);
         }
 
+        $before = ['deleted' => $item->deleted];
         $item->update(['deleted' => true]);
+        if ($purchaseRequest->procurement) {
+            $this->revisionLogger->log(
+                $request,
+                $purchaseRequest->procurement,
+                'item_deleted',
+                'item',
+                (int) $item->id,
+                $before,
+                ['deleted' => true],
+                ['deleted']
+            );
+        }
 
         return response()->json(['message' => 'Item marked as deleted.']);
     }
@@ -205,7 +331,20 @@ class PurchaseRequestController extends Controller
             ], 422);
         }
 
+        $before = ['deleted' => $item->deleted];
         $item->update(['deleted' => false]);
+        if ($purchaseRequest->procurement) {
+            $this->revisionLogger->log(
+                $request,
+                $purchaseRequest->procurement,
+                'item_restored',
+                'item',
+                (int) $item->id,
+                $before,
+                ['deleted' => false],
+                ['deleted']
+            );
+        }
 
         return response()->json([
             'message' => 'Item restored successfully.',
