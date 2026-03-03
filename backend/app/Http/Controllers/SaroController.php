@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Procurement;
 use App\Models\Saro;
 use App\Models\User;
+use App\Services\NotificationWorkflowService;
 use App\Services\ProcurementRevisionLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,7 +18,7 @@ class SaroController extends Controller
 {
     public function __construct(
         private readonly ProcurementRevisionLogger $revisionLogger,
-        private readonly NotificationWorkflowController $notificationWorkflow
+        private readonly NotificationWorkflowService $notificationWorkflow
     ) {}
 
     public function upload(Request $request, Procurement $procurement): JsonResponse

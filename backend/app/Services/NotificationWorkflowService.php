@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Services;
 
 use App\Models\Notification;
 use App\Models\Procurement;
@@ -8,7 +8,7 @@ use App\Models\Saro;
 use App\Models\User;
 use Illuminate\Support\Facades\Mail;
 
-class NotificationWorkflowController extends Controller
+class NotificationWorkflowService
 {
     public function procurementSubmitted(Procurement $procurement, User $actor): void
     {
@@ -48,7 +48,7 @@ class NotificationWorkflowController extends Controller
                 $recipient,
                 'New Procurement Submitted',
                 sprintf(
-                    "A new procurement (%s) was submitted and is ready for review.",
+                    'A new procurement (%s) was submitted and is ready for review.',
                     $procurement->procurement_no
                 )
             );
@@ -95,7 +95,7 @@ class NotificationWorkflowController extends Controller
             $requester,
             'Procurement Status Updated',
             sprintf(
-                "Your procurement %s changed status from %s to %s.",
+                'Your procurement %s changed status from %s to %s.',
                 $procurement->procurement_no,
                 $oldStatus,
                 $newStatus
@@ -138,7 +138,7 @@ class NotificationWorkflowController extends Controller
             $requester,
             'Procurement Revised',
             sprintf(
-                "%s revised your procurement %s.",
+                '%s revised your procurement %s.',
                 $senderName !== '' ? $senderName : 'Another user',
                 $procurement->procurement_no
             )

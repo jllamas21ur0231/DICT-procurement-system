@@ -7,6 +7,7 @@ use App\Models\ProcurementPdf;
 use App\Models\PurchaseRequest;
 use App\Models\Saro;
 use App\Models\User;
+use App\Services\NotificationWorkflowService;
 use App\Services\ProcurementRevisionLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,7 +21,7 @@ class ProcurementController extends Controller
 {
     public function __construct(
         private readonly ProcurementRevisionLogger $revisionLogger,
-        private readonly NotificationWorkflowController $notificationWorkflow
+        private readonly NotificationWorkflowService $notificationWorkflow
     ) {}
 
     public function search(Request $request): JsonResponse

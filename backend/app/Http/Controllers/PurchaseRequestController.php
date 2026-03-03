@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Item;
 use App\Models\PurchaseRequest;
 use App\Models\User;
+use App\Services\NotificationWorkflowService;
 use App\Services\ProcurementRevisionLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,7 +15,7 @@ class PurchaseRequestController extends Controller
 {
     public function __construct(
         private readonly ProcurementRevisionLogger $revisionLogger,
-        private readonly NotificationWorkflowController $notificationWorkflow
+        private readonly NotificationWorkflowService $notificationWorkflow
     ) {}
 
     public function index(Request $request): JsonResponse
