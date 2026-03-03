@@ -8,6 +8,7 @@ use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\PurchaseRequestController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SaroController;
+use App\Http\Controllers\SuperAdminAccountController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -77,5 +78,14 @@ Route::middleware(['auth', 'active.device'])->group(function (): void {
     // reports routes
     Route::prefix('reports')->group(function (): void {
         Route::get('/overview', [ReportController::class, 'overview']);
+    });
+
+    // super admin account management routes
+    Route::prefix('super-admin/accounts')->group(function (): void {
+        Route::get('/', [SuperAdminAccountController::class, 'index']);
+        Route::post('/', [SuperAdminAccountController::class, 'store']);
+        Route::put('/{user}', [SuperAdminAccountController::class, 'update']);
+        Route::delete('/{user}', [SuperAdminAccountController::class, 'deactivate']);
+        Route::patch('/{user}/activate', [SuperAdminAccountController::class, 'activate']);
     });
 });

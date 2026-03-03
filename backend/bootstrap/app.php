@@ -31,6 +31,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'items/*',
             'notifications',
             'notifications/*',
+            'super-admin/accounts',
+            'super-admin/accounts/*',
         ]);
 
     })
