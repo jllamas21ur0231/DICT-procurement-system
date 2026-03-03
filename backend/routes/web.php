@@ -7,7 +7,9 @@ use App\Http\Controllers\ProcurementModeController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\PurchaseRequestController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\SAdminController;
 use Illuminate\Support\Facades\Route;
+
 
 Route::get('/', function () {
     return view('welcome');
@@ -71,3 +73,32 @@ Route::middleware(['auth', 'active.device'])->group(function (): void {
         Route::get('/overview', [ReportController::class, 'overview']);
     });
 });
+
+// ── sAdmin routes ──────────────────────────────────────────────────────────────
+Route::prefix('sadmin')->group(function (): void {
+
+    // ── Open: OTP auth (no session required) ──────────────────────────────────
+    Route::post('/request-otp', [SAdminController::class, 'requestSAdminOtp']);
+    Route::post('/verify-otp',  [SAdminController::class, 'verifySAdminOtp']);
+    Route::post('/resend-otp',  [SAdminController::class, 'resendSAdminOtp']);
+
+    // ── Protected: require a valid sAdmin session ──────────────────────────────
+    Route::middleware('active.sadmin')->group(function (): void {
+        Route::get('/me',                                      [SAdminController::class,       'me']);
+        Route::post('/logout',                                 [SAdminController::class,       'logoutSAdmin']);
+        Route::get('/procurements',                            [SAdminController::class,       'procurements']);
+        Route::post('/procurements',                           [SAdminController::class,       'storeProcurement']);
+        Route::post('/procurements/{procurement}/attachments', [SAdminController::class,       'uploadProcurementAttachment']);
+        Route::get('/users',                                   [SAdminController::class,       'users']);
+        Route::delete('/users/{id}',                           [SAdminController::class,       'deleteUser']);
+        // Reference data — readable by sAdmin
+        Route::get('/projects',                                [ProjectController::class,      'index']);
+        Route::post('/projects',                               [SAdminController::class,       'storeProject']);
+        Route::get('/procurement-modes',                       [ProcurementModeController::class, 'index']);
+        Route::post('/procurement-modes',                      [SAdminController::class,       'storeProcurementMode']);
+    });
+});
+
+
+
+
