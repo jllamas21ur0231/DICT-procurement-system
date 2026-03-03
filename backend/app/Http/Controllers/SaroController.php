@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Notification;
 use App\Models\Procurement;
 use App\Models\Saro;
 use App\Models\User;
@@ -16,7 +15,10 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class SaroController extends Controller
 {
-    public function __construct(private readonly ProcurementRevisionLogger $revisionLogger) {}
+    public function __construct(
+        private readonly ProcurementRevisionLogger $revisionLogger,
+        private readonly NotificationWorkflowController $notificationWorkflow
+    ) {}
 
     public function upload(Request $request, Procurement $procurement): JsonResponse
     {
@@ -92,9 +94,9 @@ class SaroController extends Controller
                 $changedFields === [] ? array_keys($afterData) : $changedFields
             );
 
-            $this->notifyRequesterOnSaroEvent($procurement, $request->user(), $action, $saro);
+            $this->notificationWorkflow->saroNotifyRequester($procurement, $request->user(), $action, $saro);
             if ($action === 'saro_replaced') {
-                $this->notifyBudgetAdminsOnSaroLifecycle($procurement, $request->user(), $action, $saro);
+                $this->notificationWorkflow->saroNotifyBudgetAdmins($procurement, $request->user(), $action, $saro);
             }
 
             return [
@@ -205,8 +207,8 @@ class SaroController extends Controller
                 array_keys($before)
             );
 
-            $this->notifyRequesterOnSaroEvent($procurement, $request->user(), 'saro_deleted', null);
-            $this->notifyBudgetAdminsOnSaroLifecycle($procurement, $request->user(), 'saro_deleted', null);
+            $this->notificationWorkflow->saroNotifyRequester($procurement, $request->user(), 'saro_deleted', null);
+            $this->notificationWorkflow->saroNotifyBudgetAdmins($procurement, $request->user(), 'saro_deleted', null);
         });
 
         return response()->json([
@@ -244,94 +246,6 @@ class SaroController extends Controller
     private function canManageSaro(?User $user): bool
     {
         return $this->isBudgetOfficer($user) || $this->isAdmin($user);
-    }
-
-    private function notifyRequesterOnSaroEvent(Procurement $procurement, User $actor, string $event, ?Saro $saro): void
-    {
-        $requester = $procurement->requester;
-        if (! $requester || ! $requester->is_active || ! $requester->is_authorized || (int) $requester->id === (int) $actor->id) {
-            return;
-        }
-
-        $title = match ($event) {
-            'saro_uploaded' => 'SARO Uploaded',
-            'saro_replaced' => 'SARO Updated',
-            'saro_deleted' => 'SARO Removed',
-            default => 'SARO Updated',
-        };
-
-        $message = match ($event) {
-            'saro_uploaded' => sprintf('A SARO file was uploaded for procurement %s.', $procurement->procurement_no),
-            'saro_replaced' => sprintf('The SARO file was replaced for procurement %s.', $procurement->procurement_no),
-            'saro_deleted' => sprintf('The SARO file was deleted for procurement %s.', $procurement->procurement_no),
-            default => sprintf('SARO was updated for procurement %s.', $procurement->procurement_no),
-        };
-
-        Notification::create([
-            'user_id' => $requester->id,
-            'type' => $event,
-            'title' => $title,
-            'message' => $message,
-            'data' => [
-                'procurement_id' => $procurement->id,
-                'procurement_no' => $procurement->procurement_no,
-                'saro_id' => $saro?->id,
-                'actor_user_id' => $actor->id,
-            ],
-        ]);
-    }
-
-    private function notifyBudgetAdminsOnSaroLifecycle(Procurement $procurement, User $actor, string $event, ?Saro $saro): void
-    {
-        $recipients = User::query()
-            ->where('id', '!=', $actor->id)
-            ->where('is_active', true)
-            ->where('is_authorized', true)
-            ->where(function ($query): void {
-                $query->whereIn('access_type', ['admin', 'budget_officer', 'budget officer', 'budget'])
-                    ->orWhereHas('role', function ($roleQuery): void {
-                        $roleQuery->whereRaw('LOWER(role_type) LIKE ?', ['%admin%'])
-                            ->orWhereRaw('LOWER(role) LIKE ?', ['%admin%'])
-                            ->orWhereRaw('LOWER(role_type) LIKE ?', ['%budget%'])
-                            ->orWhereRaw('LOWER(role) LIKE ?', ['%budget%']);
-                    });
-            })
-            ->get();
-
-        if ($recipients->isEmpty()) {
-            return;
-        }
-
-        $now = now();
-        $title = match ($event) {
-            'saro_replaced' => 'SARO Replaced',
-            'saro_deleted' => 'SARO Deleted',
-            default => 'SARO Updated',
-        };
-        $message = match ($event) {
-            'saro_replaced' => sprintf('SARO was replaced for procurement %s.', $procurement->procurement_no),
-            'saro_deleted' => sprintf('SARO was deleted for procurement %s.', $procurement->procurement_no),
-            default => sprintf('SARO was updated for procurement %s.', $procurement->procurement_no),
-        };
-
-        $records = $recipients->map(function (User $recipient) use ($event, $title, $message, $procurement, $saro, $actor, $now): array {
-            return [
-                'user_id' => $recipient->id,
-                'type' => $event,
-                'title' => $title,
-                'message' => $message,
-                'data' => json_encode([
-                    'procurement_id' => $procurement->id,
-                    'procurement_no' => $procurement->procurement_no,
-                    'saro_id' => $saro?->id,
-                    'actor_user_id' => $actor->id,
-                ], JSON_THROW_ON_ERROR),
-                'created_at' => $now,
-                'updated_at' => $now,
-            ];
-        })->all();
-
-        Notification::insert($records);
     }
 
     private function isBudgetOfficer(?User $user): bool

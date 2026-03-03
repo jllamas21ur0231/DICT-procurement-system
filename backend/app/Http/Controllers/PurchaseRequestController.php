@@ -12,7 +12,10 @@ use Illuminate\Support\Facades\DB;
 
 class PurchaseRequestController extends Controller
 {
-    public function __construct(private readonly ProcurementRevisionLogger $revisionLogger) {}
+    public function __construct(
+        private readonly ProcurementRevisionLogger $revisionLogger,
+        private readonly NotificationWorkflowController $notificationWorkflow
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -103,6 +106,12 @@ class PurchaseRequestController extends Controller
                 (int) $purchaseRequest->id,
                 $beforeDiff,
                 $afterDiff,
+                $changedFields
+            );
+            $this->notificationWorkflow->procurementRevisedByOther(
+                $purchaseRequest->procurement,
+                $request->user(),
+                'purchase_request',
                 $changedFields
             );
         }
@@ -217,6 +226,12 @@ class PurchaseRequestController extends Controller
                 ]),
                 ['item_no', 'stock_no', 'unit', 'item_description', 'item_inclusions', 'quantity', 'unit_cost', 'deleted']
             );
+            $this->notificationWorkflow->procurementRevisedByOther(
+                $purchaseRequest->procurement,
+                $request->user(),
+                'item',
+                ['item_created']
+            );
         }
 
         return response()->json([
@@ -279,6 +294,12 @@ class PurchaseRequestController extends Controller
                 $afterDiff,
                 $changedFields
             );
+            $this->notificationWorkflow->procurementRevisedByOther(
+                $purchaseRequest->procurement,
+                $request->user(),
+                'item',
+                $changedFields
+            );
         }
 
         return response()->json([
@@ -308,6 +329,12 @@ class PurchaseRequestController extends Controller
                 (int) $item->id,
                 $before,
                 ['deleted' => true],
+                ['deleted']
+            );
+            $this->notificationWorkflow->procurementRevisedByOther(
+                $purchaseRequest->procurement,
+                $request->user(),
+                'item',
                 ['deleted']
             );
         }
@@ -342,6 +369,12 @@ class PurchaseRequestController extends Controller
                 (int) $item->id,
                 $before,
                 ['deleted' => false],
+                ['deleted']
+            );
+            $this->notificationWorkflow->procurementRevisedByOther(
+                $purchaseRequest->procurement,
+                $request->user(),
+                'item',
                 ['deleted']
             );
         }
@@ -431,4 +464,5 @@ class PurchaseRequestController extends Controller
 
         return str_contains($haystack, 'super admin');
     }
+
 }

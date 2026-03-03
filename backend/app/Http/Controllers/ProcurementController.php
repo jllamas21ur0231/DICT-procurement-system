@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Notification;
 use App\Models\Procurement;
 use App\Models\ProcurementPdf;
 use App\Models\PurchaseRequest;
@@ -19,7 +18,10 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ProcurementController extends Controller
 {
-    public function __construct(private readonly ProcurementRevisionLogger $revisionLogger) {}
+    public function __construct(
+        private readonly ProcurementRevisionLogger $revisionLogger,
+        private readonly NotificationWorkflowController $notificationWorkflow
+    ) {}
 
     public function search(Request $request): JsonResponse
     {
@@ -312,7 +314,7 @@ class ProcurementController extends Controller
                 ['procurement_no', 'title', 'procurement_mode_id', 'project_id', 'status', 'requested_by']
             );
 
-            $this->notifyBudgetOfficersOnSubmission($procurement, $request->user());
+            $this->notificationWorkflow->procurementSubmitted($procurement, $request->user());
 
             return $procurement;
         });
@@ -408,6 +410,13 @@ class ProcurementController extends Controller
                     $afterDiff,
                     $changedFields
                 );
+
+                $this->notificationWorkflow->procurementRevisedByOther(
+                    $procurement,
+                    $request->user(),
+                    'procurement',
+                    $changedFields
+                );
             }
 
             if (array_key_exists('pdfs', $validated)) {
@@ -423,7 +432,7 @@ class ProcurementController extends Controller
             }
 
             if (array_key_exists('status', $validated) && ! $this->sameStatus($originalStatus, $procurement->status)) {
-                $this->notifyRequesterOnStatusChange($procurement, $originalStatus);
+                $this->notificationWorkflow->procurementStatusChanged($procurement, $originalStatus);
             }
         });
 
@@ -729,101 +738,6 @@ class ProcurementController extends Controller
         Storage::disk('public')->copy($sourcePath, $targetPath);
 
         return $targetPath;
-    }
-
-    private function notifyBudgetOfficersOnSubmission(Procurement $procurement, User $actor): void
-    {
-        $officers = User::query()
-            ->where('id', '!=', $actor->id)
-            ->where('is_active', true)
-            ->where('is_authorized', true)
-            ->where(function ($query): void {
-                $query->whereIn('access_type', ['budget_officer', 'budget officer', 'budget'])
-                    ->orWhereHas('role', function ($roleQuery): void {
-                        $roleQuery->whereRaw('LOWER(role_type) IN (?, ?, ?)', ['budget_officer', 'budget officer', 'budget'])
-                            ->orWhereRaw('LOWER(position) LIKE ?', ['%budget%officer%'])
-                            ->orWhereRaw('LOWER(designation) LIKE ?', ['%budget%officer%'])
-                            ->orWhereRaw('LOWER(role) LIKE ?', ['%budget%officer%']);
-                    });
-            })
-            ->get();
-
-        if ($officers->isEmpty()) {
-            $officers = User::query()
-                ->where('id', '!=', $actor->id)
-                ->where('is_active', true)
-                ->where('is_authorized', true)
-                ->where('access_type', 'admin')
-                ->get();
-        }
-
-        if ($officers->isEmpty()) {
-            return;
-        }
-
-        $now = now();
-        $senderName = trim($actor->first_name.' '.$actor->last_name);
-
-        $records = $officers->map(function (User $officer) use ($procurement, $now, $senderName): array {
-            return [
-                'user_id' => $officer->id,
-                'type' => 'procurement_submitted',
-                'title' => 'New Procurement Submitted',
-                'message' => sprintf(
-                    '%s submitted procurement %s for review.',
-                    $senderName !== '' ? $senderName : 'A user',
-                    $procurement->procurement_no
-                ),
-                'data' => json_encode([
-                    'procurement_id' => $procurement->id,
-                    'procurement_no' => $procurement->procurement_no,
-                    'status' => $procurement->status,
-                    'requested_by' => $procurement->requested_by,
-                ], JSON_THROW_ON_ERROR),
-                'created_at' => $now,
-                'updated_at' => $now,
-            ];
-        })->all();
-
-        Notification::insert($records);
-    }
-
-    private function notifyRequesterOnStatusChange(Procurement $procurement, string $oldStatus): void
-    {
-        $requester = $procurement->requester;
-
-        if (! $requester || ! $requester->is_active || ! $requester->is_authorized) {
-            return;
-        }
-
-        $newStatus = $procurement->status;
-        $normalizedStatus = strtolower(trim($newStatus));
-
-        $type = match ($normalizedStatus) {
-            'approved' => 'procurement_approved',
-            'rejected' => 'procurement_rejected',
-            'accepted' => 'procurement_accepted',
-            'ongoing' => 'procurement_ongoing',
-            default => 'procurement_status_updated',
-        };
-
-        Notification::create([
-            'user_id' => $requester->id,
-            'type' => $type,
-            'title' => 'Procurement Status Updated',
-            'message' => sprintf(
-                'Your procurement %s changed from %s to %s.',
-                $procurement->procurement_no,
-                $oldStatus,
-                $newStatus
-            ),
-            'data' => [
-                'procurement_id' => $procurement->id,
-                'procurement_no' => $procurement->procurement_no,
-                'old_status' => $oldStatus,
-                'new_status' => $newStatus,
-            ],
-        ]);
     }
 
     private function sameStatus(string $a, string $b): bool
