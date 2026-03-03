@@ -165,6 +165,32 @@ class ProcurementController extends Controller
         return response()->json($this->buildPaginatedResponse($query, $perPage, $cursor, $async));
     }
 
+    public function mine(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'cursor' => ['nullable', 'string'],
+            'async' => ['nullable', 'boolean'],
+        ]);
+
+        $includeDeleted = filter_var($request->query('include_deleted', false), FILTER_VALIDATE_BOOLEAN);
+        $perPage = (int) ($validated['per_page'] ?? 15);
+        $cursor = $validated['cursor'] ?? null;
+        $async = filter_var($validated['async'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        $query = Procurement::query()
+            ->with($this->procurementRelations())
+            ->where('requested_by', $request->user()->id)
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id');
+
+        if (! $includeDeleted) {
+            $query->where('deleted', false);
+        }
+
+        return response()->json($this->buildPaginatedResponse($query, $perPage, $cursor, $async));
+    }
+
     public function show(Procurement $procurement): JsonResponse
     {
         return response()->json($procurement->load($this->procurementRelations()));

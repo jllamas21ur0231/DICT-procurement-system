@@ -14,6 +14,50 @@ class ProcurementSearchTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_it_returns_only_authenticated_users_procurements_via_mine_endpoint(): void
+    {
+        $owner = User::factory()->create([
+            'first_name' => 'Owner',
+            'last_name' => 'User',
+        ]);
+        $other = User::factory()->create([
+            'first_name' => 'Other',
+            'last_name' => 'User',
+        ]);
+
+        $mode = ProcurementMode::firstOrCreate(['name' => 'Shopping'], ['legal_basis' => 'RA 12009', 'is_active' => true]);
+        $project = Project::firstOrCreate(['name' => 'Mine Endpoint Project'], ['is_active' => true]);
+
+        Procurement::create([
+            'procurement_no' => 'PR-2026-910001',
+            'title' => 'Owner Procurement',
+            'procurement_mode_id' => $mode->id,
+            'project_id' => $project->id,
+            'status' => 'pending',
+            'description' => 'Owned by current user',
+            'requested_by' => $owner->id,
+            'deleted' => false,
+        ]);
+
+        Procurement::create([
+            'procurement_no' => 'PR-2026-910002',
+            'title' => 'Other User Procurement',
+            'procurement_mode_id' => $mode->id,
+            'project_id' => $project->id,
+            'status' => 'pending',
+            'description' => 'Owned by another user',
+            'requested_by' => $other->id,
+            'deleted' => false,
+        ]);
+
+        $this->withoutMiddleware(EnsureActiveDeviceSession::class)
+            ->actingAs($owner)
+            ->getJson('/procurements/mine')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.procurement_no', 'PR-2026-910001');
+    }
+
     public function test_it_filters_procurements_with_keywords(): void
     {
         $user = User::factory()->create();
