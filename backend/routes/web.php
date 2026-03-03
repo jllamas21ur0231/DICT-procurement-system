@@ -7,7 +7,7 @@ use App\Http\Controllers\ProcurementModeController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\PurchaseRequestController;
 use App\Http\Controllers\ReportController;
-use App\Http\Controllers\SAdminController;
+use App\Http\Controllers\SaroController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -33,7 +33,9 @@ Route::middleware(['auth', 'active.device'])->group(function (): void {
         Route::get('/search', [ProcurementController::class, 'search'])->middleware('throttle:procurement-search');
         Route::get('/filter', [ProcurementController::class, 'filter']);
         Route::post('/', [ProcurementController::class, 'store']);
+        Route::post('/{procurement}/duplicate', [ProcurementController::class, 'duplicate']);
         Route::get('/{procurement}', [ProcurementController::class, 'show']);
+        Route::get('/{procurement}/revisions', [ProcurementController::class, 'revisions']);
         Route::put('/{procurement}', [ProcurementController::class, 'update']);
         Route::delete('/{procurement}', [ProcurementController::class, 'destroy']);
         Route::patch('/{procurement}/restore', [ProcurementController::class, 'restore']);
@@ -41,6 +43,11 @@ Route::middleware(['auth', 'active.device'])->group(function (): void {
         Route::post('/{procurement}/attachments', [ProcurementController::class, 'uploadAttachment']);
         Route::get('/{procurement}/attachments/{attachment}', [ProcurementController::class, 'showAttachment']);
         Route::get('/{procurement}/attachments/{attachment}/download', [ProcurementController::class, 'downloadAttachment']);
+        Route::post('/{procurement}/saro', [SaroController::class, 'upload']);
+        Route::put('/{procurement}/saro', [SaroController::class, 'replace']);
+        Route::get('/{procurement}/saro', [SaroController::class, 'show']);
+        Route::get('/{procurement}/saro/download', [SaroController::class, 'download']);
+        Route::delete('/{procurement}/saro', [SaroController::class, 'destroy']);
     });
     // purchase request routes
     Route::prefix('purchase-requests')->group(function (): void {

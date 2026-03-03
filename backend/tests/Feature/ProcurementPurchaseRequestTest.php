@@ -5,8 +5,10 @@ namespace Tests\Feature;
 use App\Http\Middleware\EnsureActiveDeviceSession;
 use App\Models\ProcurementMode;
 use App\Models\Project;
+use App\Models\Saro;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class ProcurementPurchaseRequestTest extends TestCase
@@ -214,5 +216,103 @@ class ProcurementPurchaseRequestTest extends TestCase
             'id' => $itemId,
             'deleted' => false,
         ]);
+    }
+
+    public function test_it_duplicates_procurement_and_related_records_with_new_procurement_number(): void
+    {
+        Storage::fake('public');
+
+        $requester = User::factory()->create(['access_type' => 'user']);
+        $project = Project::firstOrCreate(['name' => 'Duplication Project'], ['is_active' => true]);
+        $mode = ProcurementMode::firstOrCreate(['name' => 'Shopping'], ['legal_basis' => 'RA 12009', 'is_active' => true]);
+
+        $createResponse = $this->withoutMiddleware(EnsureActiveDeviceSession::class)
+            ->actingAs($requester)
+            ->postJson('/procurements', [
+                'title' => 'Original Procurement',
+                'procurement_mode_id' => $mode->id,
+                'project_id' => $project->id,
+                'description' => 'Original description',
+                'purchase_request' => [
+                    'office' => 'Admin Office',
+                    'date_created' => '2026-03-03',
+                    'responsibility_center_code' => 'RCC-111',
+                    'purpose' => 'Original purpose',
+                    'items' => [
+                        [
+                            'item_no' => '1',
+                            'stock_no' => 'STK-DUP-1',
+                            'unit' => 'pcs',
+                            'item_description' => 'Duplicated item',
+                            'item_inclusions' => 'With accessories',
+                            'quantity' => 3,
+                            'unit_cost' => 1200.50,
+                        ],
+                    ],
+                ],
+            ])->assertCreated();
+
+        $originalId = (int) $createResponse->json('procurement.id');
+        $originalNo = (string) $createResponse->json('procurement.procurement_no');
+
+        Storage::disk('public')->put('procurements/'.$originalId.'/original-attachment.pdf', 'pdf-content');
+        Storage::disk('public')->put('procurements/'.$originalId.'/saro/original-saro.pdf', 'saro-content');
+
+        $this->assertDatabaseHas('procurements', ['id' => $originalId, 'procurement_no' => $originalNo]);
+
+        \App\Models\ProcurementPdf::create([
+            'procurement_id' => $originalId,
+            'file_name' => 'Original Attachment.pdf',
+            'file_path' => 'procurements/'.$originalId.'/original-attachment.pdf',
+            'checklist' => ['annual_procurement_plan' => true],
+        ]);
+
+        Saro::create([
+            'procurement_id' => $originalId,
+            'uploaded_by' => $requester->id,
+            'file_name' => 'Original SARO.pdf',
+            'file_path' => 'procurements/'.$originalId.'/saro/original-saro.pdf',
+            'mime_type' => 'application/pdf',
+            'file_size' => 12,
+            'remarks' => 'Original SARO',
+        ]);
+
+        $duplicateResponse = $this->withoutMiddleware(EnsureActiveDeviceSession::class)
+            ->actingAs($requester)
+            ->postJson('/procurements/'.$originalId.'/duplicate')
+            ->assertCreated()
+            ->assertJsonPath('message', 'Procurement duplicated successfully.');
+
+        $duplicateId = (int) $duplicateResponse->json('procurement.id');
+        $duplicateNo = (string) $duplicateResponse->json('procurement.procurement_no');
+
+        $this->assertNotSame($originalId, $duplicateId);
+        $this->assertNotSame($originalNo, $duplicateNo);
+
+        $this->assertDatabaseHas('purchase_requests', [
+            'procurement_id' => $duplicateId,
+            'office' => 'Admin Office',
+            'responsibility_center_code' => 'RCC-111',
+            'purpose' => 'Original purpose',
+            'deleted' => false,
+        ]);
+
+        $this->assertDatabaseCount('items', 2);
+        $this->assertDatabaseHas('procurement_revisions', [
+            'procurement_id' => $duplicateId,
+            'action' => 'procurement_duplicated',
+            'entity_type' => 'procurement',
+            'entity_id' => $duplicateId,
+        ]);
+
+        $clonedPdf = \App\Models\ProcurementPdf::where('procurement_id', $duplicateId)->first();
+        $this->assertNotNull($clonedPdf);
+        $this->assertNotSame('procurements/'.$originalId.'/original-attachment.pdf', $clonedPdf->file_path);
+        Storage::disk('public')->assertExists($clonedPdf->file_path);
+
+        $clonedSaro = Saro::where('procurement_id', $duplicateId)->first();
+        $this->assertNotNull($clonedSaro);
+        $this->assertNotSame('procurements/'.$originalId.'/saro/original-saro.pdf', $clonedSaro->file_path);
+        Storage::disk('public')->assertExists($clonedSaro->file_path);
     }
 }
