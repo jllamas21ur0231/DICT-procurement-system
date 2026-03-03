@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AdminAccountController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProcurementController;
 use App\Http\Controllers\ProcurementModeController;
@@ -8,6 +9,8 @@ use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\PurchaseRequestController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SaroController;
+use App\Http\Controllers\SuperAdminAccountController;
+use App\Http\Controllers\SuperAdminReadController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -30,6 +33,7 @@ Route::middleware(['auth', 'active.device'])->group(function (): void {
     // procurement routes
     Route::prefix('procurements')->group(function (): void {
         Route::get('/', [ProcurementController::class, 'index']);
+        Route::get('/mine', [ProcurementController::class, 'mine']);
         Route::get('/search', [ProcurementController::class, 'search'])->middleware('throttle:procurement-search');
         Route::get('/filter', [ProcurementController::class, 'filter']);
         Route::post('/', [ProcurementController::class, 'store']);
@@ -78,6 +82,41 @@ Route::middleware(['auth', 'active.device'])->group(function (): void {
     // reports routes
     Route::prefix('reports')->group(function (): void {
         Route::get('/overview', [ReportController::class, 'overview']);
+    });
+
+    // super admin account management routes
+    Route::prefix('super-admin/accounts')->group(function (): void {
+        Route::get('/', [SuperAdminAccountController::class, 'index']);
+        Route::post('/', [SuperAdminAccountController::class, 'store']);
+        Route::put('/{user}', [SuperAdminAccountController::class, 'update']);
+        Route::delete('/{user}', [SuperAdminAccountController::class, 'deactivate']);
+        Route::patch('/{user}/activate', [SuperAdminAccountController::class, 'activate']);
+    });
+
+    // super admin read-only data routes
+    Route::prefix('super-admin/data')->group(function (): void {
+        Route::get('/overview', [SuperAdminReadController::class, 'overview']);
+        Route::get('/users', [SuperAdminReadController::class, 'users']);
+        Route::get('/procurements', [SuperAdminReadController::class, 'procurements']);
+        Route::get('/purchase-requests', [SuperAdminReadController::class, 'purchaseRequests']);
+        Route::get('/revisions', [SuperAdminReadController::class, 'revisions']);
+        Route::get('/projects', [SuperAdminReadController::class, 'projects']);
+        Route::get('/procurement-modes', [SuperAdminReadController::class, 'procurementModes']);
+    });
+
+    // admin account management routes (no deactivate)
+    Route::prefix('admin/accounts')->group(function (): void {
+        Route::get('/', [AdminAccountController::class, 'index']);
+        Route::post('/', [AdminAccountController::class, 'store']);
+        Route::put('/{user}', [AdminAccountController::class, 'update']);
+    });
+
+    Route::prefix('admin/projects')->group(function (): void {
+        Route::post('/', [ProjectController::class, 'store']);
+    });
+
+    Route::prefix('admin/procurement-modes')->group(function (): void {
+        Route::post('/', [ProcurementModeController::class, 'store']);
     });
 });
 

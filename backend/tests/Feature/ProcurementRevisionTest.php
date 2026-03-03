@@ -85,4 +85,35 @@ class ProcurementRevisionTest extends TestCase
             'entity_id' => $procurementId,
         ]);
     }
+
+    public function test_super_admin_can_view_revisions_for_any_procurement(): void
+    {
+        $requester = User::factory()->create(['access_type' => 'user']);
+        $superAdmin = User::factory()->create(['access_type' => 'super_admin']);
+        $project = Project::firstOrCreate(['name' => 'Super Admin Revision Project'], ['is_active' => true]);
+        $mode = ProcurementMode::firstOrCreate(['name' => 'Shopping'], ['legal_basis' => 'RA 12009', 'is_active' => true]);
+
+        $createResponse = $this->withoutMiddleware(EnsureActiveDeviceSession::class)
+            ->actingAs($requester)
+            ->postJson('/procurements', [
+                'title' => 'Revision Visibility Procurement',
+                'procurement_mode_id' => $mode->id,
+                'project_id' => $project->id,
+                'purchase_request' => [
+                    'office' => 'Admin Office',
+                    'date_created' => now()->toDateString(),
+                    'responsibility_center_code' => 'RCC-SA-100',
+                    'purpose' => 'Super admin revision view',
+                    'items' => [],
+                ],
+            ])->assertCreated();
+
+        $procurementId = (int) $createResponse->json('procurement.id');
+
+        $this->withoutMiddleware(EnsureActiveDeviceSession::class)
+            ->actingAs($superAdmin)
+            ->getJson('/procurements/'.$procurementId.'/revisions')
+            ->assertOk()
+            ->assertJsonFragment(['action' => 'procurement_created']);
+    }
 }

@@ -315,4 +315,35 @@ class ProcurementPurchaseRequestTest extends TestCase
         $this->assertNotSame('procurements/'.$originalId.'/saro/original-saro.pdf', $clonedSaro->file_path);
         Storage::disk('public')->assertExists($clonedSaro->file_path);
     }
+
+    public function test_super_admin_can_view_purchase_request_of_other_user(): void
+    {
+        $requester = User::factory()->create(['access_type' => 'user']);
+        $superAdmin = User::factory()->create(['access_type' => 'super_admin']);
+        $project = Project::firstOrCreate(['name' => 'Super Admin PR Project'], ['is_active' => true]);
+        $mode = ProcurementMode::firstOrCreate(['name' => 'Shopping'], ['legal_basis' => 'RA 12009', 'is_active' => true]);
+
+        $createResponse = $this->withoutMiddleware(EnsureActiveDeviceSession::class)
+            ->actingAs($requester)
+            ->postJson('/procurements', [
+                'title' => 'Super Admin PR Visibility',
+                'procurement_mode_id' => $mode->id,
+                'project_id' => $project->id,
+                'purchase_request' => [
+                    'office' => 'Admin Office',
+                    'date_created' => '2026-03-03',
+                    'responsibility_center_code' => 'RCC-SA-PR',
+                    'purpose' => 'Visibility check',
+                    'items' => [],
+                ],
+            ])->assertCreated();
+
+        $purchaseRequestId = (int) $createResponse->json('procurement.purchase_request.id');
+
+        $this->withoutMiddleware(EnsureActiveDeviceSession::class)
+            ->actingAs($superAdmin)
+            ->getJson('/purchase-requests/'.$purchaseRequestId)
+            ->assertOk()
+            ->assertJsonPath('id', $purchaseRequestId);
+    }
 }

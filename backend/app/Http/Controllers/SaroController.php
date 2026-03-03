@@ -236,7 +236,9 @@ class SaroController extends Controller
             return false;
         }
 
-        return (int) $procurement->requested_by === (int) $user->id || $this->canManageSaro($user);
+        return (int) $procurement->requested_by === (int) $user->id
+            || $this->canManageSaro($user)
+            || $this->isSuperAdmin($user);
     }
 
     private function canManageSaro(?User $user): bool
@@ -381,5 +383,31 @@ class SaroController extends Controller
         ])));
 
         return str_contains($haystack, 'admin');
+    }
+
+    private function isSuperAdmin(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        $accessType = strtolower(trim((string) $user->access_type));
+        if (in_array($accessType, ['super_admin', 'super admin', 'superadmin'], true)) {
+            return true;
+        }
+
+        $role = $user->role;
+        if (! $role) {
+            return false;
+        }
+
+        $haystack = strtolower(trim(implode(' ', [
+            (string) $role->role_type,
+            (string) $role->position,
+            (string) $role->designation,
+            (string) $role->role,
+        ])));
+
+        return str_contains($haystack, 'super admin');
     }
 }
