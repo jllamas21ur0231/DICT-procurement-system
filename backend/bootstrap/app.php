@@ -33,21 +33,20 @@ return Application::configure(basePath: dirname(__DIR__))
             'items/*',
             'notifications',
             'notifications/*',
-<<<<<<< HEAD
-            'sadmin',
-            'sadmin/*',
-=======
-            'super-admin/accounts',
-            'super-admin/accounts/*',
-            'super-admin/data',
-            'super-admin/data/*',
+            'sadmin/accounts',
+            'sadmin/accounts/*',
+            'sadmin/data',
+            'sadmin/data/*',
             'admin/accounts',
             'admin/accounts/*',
             'admin/projects',
             'admin/projects/*',
             'admin/procurement-modes',
             'admin/procurement-modes/*',
->>>>>>> branch2
+            'sadmin/request-otp',
+            'sadmin/verify-otp',
+            'sadmin/resend-otp',
+            'sadmin/logout',
         ]);
 
 

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 03, 2026 at 06:44 AM
+-- Generation Time: Mar 03, 2026 at 08:56 AM
 -- Server version: 10.4.28-MariaDB
 -- PHP Version: 8.2.4
 
@@ -148,7 +148,10 @@ INSERT INTO `login_otps` (`id`, `email`, `otp_hash`, `expires_at`, `attempts`, `
 (26, 'emmanllamas052@gmail.com', '$2y$12$y/kPK5LYB4zJ0XrcI.Fgkune.NStMU.wGDF8sDS.mM9NN8GcPIY7C', '2026-03-03 05:16:22', 0, '2026-03-02 21:16:22', '2026-03-02 21:15:33', '2026-03-02 21:16:22'),
 (27, 'emmanllamas052@gmail.com', '$2y$12$2.U9LIVnDAhfXg0IhQ3Ko.6s7LENcqpSMXmddC4gbq1qbQG7LM6eG', '2026-03-03 05:18:58', 0, '2026-03-02 21:18:58', '2026-03-02 21:16:54', '2026-03-02 21:18:58'),
 (28, 'emmanllamas052@gmail.com', '$2y$12$cB81mqB/7ZMihMnQeeY0GuUbVHcBd2czkhI4Xlai/aMhRIEKc.xYq', '2026-03-03 05:20:30', 0, '2026-03-02 21:20:30', '2026-03-02 21:18:58', '2026-03-02 21:20:30'),
-(29, 'emmanlabwork@gmail.com', '$2y$12$8XEHEorlDOjsrirtS7qWAOKvWcNgR3mC078mXEmGZ4EcfCSenptJe', '2026-03-03 05:29:29', 0, '2026-03-02 21:29:29', '2026-03-02 21:28:42', '2026-03-02 21:29:29');
+(29, 'emmanlabwork@gmail.com', '$2y$12$8XEHEorlDOjsrirtS7qWAOKvWcNgR3mC078mXEmGZ4EcfCSenptJe', '2026-03-03 05:29:29', 0, '2026-03-02 21:29:29', '2026-03-02 21:28:42', '2026-03-02 21:29:29'),
+(30, 'emmanllamas052@gmail.com', '$2y$12$NWeJXOCH8G4N.bT720FBU.jA/6vUI7vKxqwVUbH/yyreZB40fPocq', '2026-03-03 06:19:16', 0, '2026-03-02 22:19:16', '2026-03-02 22:17:53', '2026-03-02 22:19:16'),
+(31, 'emmanllamas052@gmail.com', '$2y$12$mXDMG7WYzUooqTlBDQGlIePJI8/kG0mKxpWpZnBM9Dk89uEWfrI1q', '2026-03-03 07:52:05', 0, '2026-03-02 23:52:05', '2026-03-02 23:51:44', '2026-03-02 23:52:05'),
+(32, 'emmanllamas052@gmail.com', '$2y$12$H0qqBOj5xMv8BFE27WHjnO6.9.u6D3Y/1qeP4AVqceGyU3M10s0Ay', '2026-03-03 07:54:04', 0, '2026-03-02 23:54:04', '2026-03-02 23:53:43', '2026-03-02 23:54:04');
 
 -- --------------------------------------------------------
 
@@ -179,7 +182,11 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES
 (10, '2026_03_02_100000_create_projects_table', 4),
 (11, '2026_03_02_100100_create_procurement_modes_table', 4),
 (12, '2026_03_02_100200_add_project_and_mode_fk_to_procurements_table', 4),
-(13, '2026_03_02_101000_drop_legacy_project_and_mode_columns_from_procurements', 5);
+(13, '2026_03_02_101000_drop_legacy_project_and_mode_columns_from_procurements', 5),
+(14, '2026_03_02_102000_add_search_indexes_to_procurements_table', 6),
+(15, '2026_03_03_054000_make_requested_by_nullable_in_procurements', 6),
+(16, '2026_03_02_103000_create_procurement_revisions_table', 7),
+(17, '2026_03_03_000000_create_saros_table', 7);
 
 -- --------------------------------------------------------
 
@@ -208,7 +215,8 @@ INSERT INTO `notifications` (`id`, `user_id`, `type`, `title`, `message`, `data`
 (2, 1, 'procurement_accepted', 'Procurement Status Updated', 'Your procurement PR-2026-000001 changed from pending to accepted.', '{\"new_status\": \"accepted\", \"old_status\": \"pending\", \"procurement_id\": 1, \"procurement_no\": \"PR-2026-000001\"}', NULL, '2026-02-24 22:29:12', '2026-02-24 22:29:12'),
 (3, 1, 'procurement_rejected', 'Procurement Status Updated', 'Your procurement PR-2026-000002 changed from pending to rejected.', '{\"new_status\": \"rejected\", \"old_status\": \"pending\", \"procurement_id\": 2, \"procurement_no\": \"PR-2026-000002\"}', NULL, '2026-02-24 22:29:24', '2026-02-24 22:29:24'),
 (4, 2, 'procurement_submitted', 'New Procurement Submitted', 'GRANT ARACHEA submitted procurement PR-2026-000021 for review.', '{\"status\": \"pending\", \"requested_by\": 1, \"procurement_id\": 21, \"procurement_no\": \"PR-2026-000021\"}', NULL, '2026-02-25 16:49:32', '2026-02-25 16:49:32'),
-(5, 2, 'procurement_submitted', 'New Procurement Submitted', 'GRANT ARACHEA submitted procurement PR-2026-000022 for review.', '{\"status\": \"pending\", \"requested_by\": 1, \"procurement_id\": 22, \"procurement_no\": \"PR-2026-000022\"}', NULL, '2026-03-01 22:42:40', '2026-03-01 22:42:40');
+(5, 2, 'procurement_submitted', 'New Procurement Submitted', 'GRANT ARACHEA submitted procurement PR-2026-000022 for review.', '{\"status\": \"pending\", \"requested_by\": 1, \"procurement_id\": 22, \"procurement_no\": \"PR-2026-000022\"}', NULL, '2026-03-01 22:42:40', '2026-03-01 22:42:40'),
+(6, 2, 'procurement_submitted', 'New Procurement Submitted', 'emman llamas submitted procurement PR-2026-000023 for review.', '{\"procurement_id\":23,\"procurement_no\":\"PR-2026-000023\",\"status\":\"pending\",\"requested_by\":4}', NULL, '2026-03-02 21:45:17', '2026-03-02 21:45:17');
 
 -- --------------------------------------------------------
 
@@ -236,7 +244,7 @@ CREATE TABLE `procurements` (
   `project_id` bigint(20) UNSIGNED DEFAULT NULL,
   `status` varchar(255) NOT NULL DEFAULT 'pending',
   `description` text DEFAULT NULL,
-  `requested_by` bigint(20) UNSIGNED NOT NULL,
+  `requested_by` bigint(20) UNSIGNED DEFAULT NULL,
   `deleted` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL
@@ -268,7 +276,9 @@ INSERT INTO `procurements` (`id`, `procurement_no`, `title`, `procurement_mode_i
 (19, 'PR-2026-000019', 'Office Supply Batch #19', 7, 4, 'pending', 'Generated sample procurement record #19', 3, 0, '2026-02-25 16:28:26', '2026-02-25 16:28:26'),
 (20, 'PR-2026-000020', 'Office Supply Batch #20', 5, 5, 'pending', 'Generated sample procurement record #20', 3, 0, '2026-02-25 16:28:26', '2026-02-25 16:28:26'),
 (21, 'PR-2026-000021', 'Updated Procurement Title', 5, 6, 'pending', 'Updated notes', 3, 0, '2026-02-25 16:49:32', '2026-02-25 16:50:17'),
-(22, 'PR-2026-000022', 'Test Procurement via Postman', 4, 21, 'pending', 'Testing FK-only procurement', 3, 0, '2026-03-01 22:42:40', '2026-03-01 22:42:40');
+(22, 'PR-2026-000022', 'Test Procurement via Postman', 4, 21, 'pending', 'Testing FK-only procurement', 3, 0, '2026-03-01 22:42:40', '2026-03-01 22:42:40'),
+(23, 'PR-2026-000023', 'ma ano ulam', 9, 21, 'pending', 'astug', 4, 0, '2026-03-02 21:45:17', '2026-03-02 21:45:17'),
+(24, 'PR-2026-000024', 'malambing na pusa', 11, 7, 'pending', 'sobrang lambing', NULL, 0, '2026-03-02 21:49:07', '2026-03-02 21:49:07');
 
 -- --------------------------------------------------------
 
@@ -326,7 +336,31 @@ CREATE TABLE `procurement_pdfs` (
 
 INSERT INTO `procurement_pdfs` (`id`, `procurement_id`, `file_name`, `file_path`, `checklist`, `created_at`, `updated_at`) VALUES
 (1, 1, 'request-form.pdf', 'procurements/1/oswuVSrEcjqWe8gzUU0MmZoEIk1blG6QXYFekOQf.pdf', '{\"signed\": \"true\", \"quotation_attached\": \"false\"}', '2026-02-24 21:45:51', '2026-02-24 21:45:51'),
-(2, 21, 'hahah.pdf', 'procurements/21/EQpNtfGd40kyYbG27gTgKBIzo7HlQvBnLmh6ak6e.pdf', '{\"signed\": true, \"remarks\": \"initial upload\", \"complete\": true}', '2026-02-25 16:52:19', '2026-02-25 16:52:19');
+(2, 21, 'hahah.pdf', 'procurements/21/EQpNtfGd40kyYbG27gTgKBIzo7HlQvBnLmh6ak6e.pdf', '{\"signed\": true, \"remarks\": \"initial upload\", \"complete\": true}', '2026-02-25 16:52:19', '2026-02-25 16:52:19'),
+(3, 23, 'Procurement-System.pdf', 'procurements/23/p9gcGXNOhkCrC7DjpOov7FMK8ExSbuDoDuk313zz.pdf', '{\"type\":\"project_procurement_management_plan\"}', '2026-03-02 21:45:18', '2026-03-02 21:45:18'),
+(4, 24, 'Distribution of UNDP Tablets to Pangasinan Beneficiaries (2).pdf', 'procurements/24/7K8oqqhefpCnNxwFlEiX1mrYmNsxo8C3vYefQWCZ.pdf', '{\"type\":\"project_procurement_management_plan\"}', '2026-03-02 21:49:07', '2026-03-02 21:49:07');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `procurement_revisions`
+--
+
+CREATE TABLE `procurement_revisions` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `procurement_id` bigint(20) UNSIGNED NOT NULL,
+  `actor_user_id` bigint(20) UNSIGNED DEFAULT NULL,
+  `action` varchar(100) NOT NULL,
+  `entity_type` varchar(50) NOT NULL,
+  `entity_id` bigint(20) UNSIGNED NOT NULL,
+  `before_data` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`before_data`)),
+  `after_data` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`after_data`)),
+  `changed_fields` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`changed_fields`)),
+  `reason` text DEFAULT NULL,
+  `ip_address` varchar(45) DEFAULT NULL,
+  `user_agent` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -416,7 +450,9 @@ INSERT INTO `purchase_requests` (`id`, `procurement_id`, `purchase_request_numbe
 (19, 19, 'PUR-2026-000019', 'Admin Office', '2026-02-05', 'RCC-416', 'Generated purchase request for Office Upgrade', 0, '2026-02-25 16:28:26', '2026-02-25 16:28:26'),
 (20, 20, 'PUR-2026-000020', 'Budget Office', '2026-02-16', 'RCC-374', 'Generated purchase request for Facilities Maintenance', 0, '2026-02-25 16:28:26', '2026-02-25 16:28:26'),
 (21, 21, 'PUR-2026-000021', 'Admin Office', '2026-02-26', 'RCC-001', 'Office seating replacement', 0, '2026-02-25 16:49:32', '2026-02-25 16:49:32'),
-(22, 22, 'PUR-2026-000022', 'Admin Office', '2026-03-02', 'RCC-001', 'System test', 0, '2026-03-01 22:42:40', '2026-03-01 22:42:40');
+(22, 22, 'PUR-2026-000022', 'Admin Office', '2026-03-02', 'RCC-001', 'System test', 0, '2026-03-01 22:42:40', '2026-03-01 22:42:40'),
+(23, 23, 'PUR-2026-000023', 'DICT Regional Office I', '2026-03-03', 'N/A', 'ma ano ulam', 0, '2026-03-02 21:45:17', '2026-03-02 21:45:17'),
+(24, 24, 'PUR-2026-000024', 'DICT Regional Office I', '2026-03-03', 'N/A', 'malambing na pusa', 0, '2026-03-02 21:49:07', '2026-03-02 21:49:07');
 
 -- --------------------------------------------------------
 
@@ -477,6 +513,25 @@ INSERT INTO `sadmin` (`id`, `last_name`, `first_name`, `middle_name`, `email`, `
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `saros`
+--
+
+CREATE TABLE `saros` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `procurement_id` bigint(20) UNSIGNED NOT NULL,
+  `uploaded_by` bigint(20) UNSIGNED DEFAULT NULL,
+  `file_name` varchar(255) NOT NULL,
+  `file_path` varchar(1000) NOT NULL,
+  `mime_type` varchar(150) NOT NULL,
+  `file_size` bigint(20) UNSIGNED NOT NULL,
+  `remarks` text DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `sessions`
 --
 
@@ -494,13 +549,10 @@ CREATE TABLE `sessions` (
 --
 
 INSERT INTO `sessions` (`id`, `user_id`, `ip_address`, `user_agent`, `payload`, `last_activity`) VALUES
-('2xrpxel7dp8qRP2Dw8dIIybWQmREiRkRjGCCzYLr', 4, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 'YTo0OntzOjY6Il90b2tlbiI7czo0MDoiUk5CMXNtUjhpZEIzTmhvRTZ4cGVZeUJLbDdoV0t2eEJobEdlNW4yRCI7czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6Mzk6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9wcm9jdXJlbWVudC1tb2RlcyI7czo1OiJyb3V0ZSI7Tjt9czo1MDoibG9naW5fd2ViXzU5YmEzNmFkZGMyYjJmOTQwMTU4MGYwMTRjN2Y1OGVhNGUzMDk4OWQiO2k6NDt9', 1772516552),
-('9CDhFX1d4A0fyv9wozGKwRcgMRvrSns5CqKAyBHU', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoiMERQaUoyNmN0Ukw5NXVocWlRY2YwYVh4bGJPSWc2MlNhek1YMUQyOCI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzE6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9zYWRtaW4vbWUiO3M6NToicm91dGUiO047fXM6NjoiX2ZsYXNoIjthOjI6e3M6Mzoib2xkIjthOjA6e31zOjM6Im5ldyI7YTowOnt9fX0=', 1772509527),
-('cJdBym904sKTZHILyYFf5oa9ERq3LE02kIwy2sXY', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoiYWxyTGw2cXhzYThNdVlTbUtSbDJEN2VlWTJoSzZzYTBtNWZuMFNXZCI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MjE6Imh0dHA6Ly8xMjcuMC4wLjE6ODAwMCI7czo1OiJyb3V0ZSI7Tjt9czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319fQ==', 1772514916),
-('K2srxtU0nNdotmy0tJe7aW4SiwHArr5TdvyPq1YA', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', 'YTo1OntzOjY6Il90b2tlbiI7czo0MDoiN0Z4MDh0VXBwOXQ1TlQ5Qkl3SHozdWxNbllYeHVmdnZ4WEszTnpHSiI7czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319czo5OiJzYWRtaW5faWQiO2k6MTtzOjEyOiJzYWRtaW5fZW1haWwiO3M6MjI6ImVtbWFubGFid29ya0BnbWFpbC5jb20iO3M6OToiX3ByZXZpb3VzIjthOjI6e3M6MzoidXJsIjtzOjQ2OiJodHRwOi8vbG9jYWxob3N0OjgwMDAvc2FkbWluL3Byb2N1cmVtZW50LW1vZGVzIjtzOjU6InJvdXRlIjtOO319', 1772516583),
-('lhOqX7CUOrlYXvWRrcELDEnSM8ScM6OS4O91dyvc', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', 'YToyOntzOjY6Il90b2tlbiI7czo0MDoiekdmYW9kUjl6RkpqNG40azl0RjVseVpVd003bGxUckU5UktxZHh6RCI7czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319fQ==', 1772515726),
-('PKX5iCqS3jSiKNUCAowhWoJUOpZWmsEYaL3VZ3V2', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoiZTZRaTR5QkU4QlhVdE9ydHdCRERMTWkwRHlDd1BuRzRuZ1N6QXNCUyI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzE6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9zYWRtaW4vbWUiO3M6NToicm91dGUiO047fXM6NjoiX2ZsYXNoIjthOjI6e3M6Mzoib2xkIjthOjA6e31zOjM6Im5ldyI7YTowOnt9fX0=', 1772509527),
-('uNbwBNXRMqCTC61Z3hy0h1DTMzrfjNcpv4Mao4Au', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoiYWZPTW1YRnpuSUhSOEgzendFTEtYVEZtWFd6eFR0RElGamRwZkRySCI7czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MzE6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9zYWRtaW4vbWUiO3M6NToicm91dGUiO047fX0=', 1772509565);
+('Ihm1fWh4eOMVjLfriVHS18vqWxUy6286QhuQT9XV', 4, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', 'YTo0OntzOjY6Il90b2tlbiI7czo0MDoiRnJLMTVwZzRsaXZNaVRxRk1iTzlYenExYUtGanpzSnZ5QzU0U2FSaCI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6NDc6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9wcm9jdXJlbWVudHM/cGVyX3BhZ2U9MTAwIjtzOjU6InJvdXRlIjtOO31zOjY6Il9mbGFzaCI7YToyOntzOjM6Im9sZCI7YTowOnt9czozOiJuZXciO2E6MDp7fX1zOjUwOiJsb2dpbl93ZWJfNTliYTM2YWRkYzJiMmY5NDAxNTgwZjAxNGM3ZjU4ZWE0ZTMwOTg5ZCI7aTo0O30=', 1772524517),
+('K2srxtU0nNdotmy0tJe7aW4SiwHArr5TdvyPq1YA', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', 'YTo1OntzOjY6Il90b2tlbiI7czo0MDoiN0Z4MDh0VXBwOXQ1TlQ5Qkl3SHozdWxNbllYeHVmdnZ4WEszTnpHSiI7czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319czo5OiJzYWRtaW5faWQiO2k6MTtzOjEyOiJzYWRtaW5fZW1haWwiO3M6MjI6ImVtbWFubGFid29ya0BnbWFpbC5jb20iO3M6OToiX3ByZXZpb3VzIjthOjI6e3M6MzoidXJsIjtzOjM0OiJodHRwOi8vbG9jYWxob3N0OjgwMDAvc2FkbWluL3VzZXJzIjtzOjU6InJvdXRlIjtOO319', 1772524269),
+('W5lrPKqawGMUtZ2vXAXLj2RrdDixCSpm8mvOVCbY', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoiNjBZa2duN3BNZVF6ZTRnUkthMzRXREJQcVF0ODRTQWo0bWlGY0JqRCI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6Mjk6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMC9hdXRoL21lIjtzOjU6InJvdXRlIjtOO31zOjY6Il9mbGFzaCI7YToyOntzOjM6Im9sZCI7YTowOnt9czozOiJuZXciO2E6MDp7fX19', 1772524301),
+('XhXezOR5PyKVGQZx8aLJnELBcNyLnS31LScnKdqp', NULL, '127.0.0.1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 Edg/145.0.0.0', 'YTozOntzOjY6Il90b2tlbiI7czo0MDoiMmRHTzNxYmZYWndCZ3JtMENlcXRCOW1RZUh2QlNUN3NLMTBTVjNSNCI7czo5OiJfcHJldmlvdXMiO2E6Mjp7czozOiJ1cmwiO3M6MjE6Imh0dHA6Ly9sb2NhbGhvc3Q6ODAwMCI7czo1OiJyb3V0ZSI7Tjt9czo2OiJfZmxhc2giO2E6Mjp7czozOiJvbGQiO2E6MDp7fXM6MzoibmV3IjthOjA6e319fQ==', 1772524285);
 
 -- --------------------------------------------------------
 
@@ -534,7 +586,7 @@ INSERT INTO `users` (`id`, `last_name`, `first_name`, `middle_name`, `email`, `u
 (1, 'ARACHEA', 'GRANT', 'liwanag', 'grantarachea@gmail.com', 'hey', 'user', 1, 0, 1, '5wwn3r85SnS8rGTIK8Z8TDozyOBQ732KpvD19uvK', '8ae1e060b74b9ba4317a7197c1e1f1311c940063092506dad797bde2e847d2bf', NULL, '2026-02-24 21:09:10', '2026-03-02 18:13:11'),
 (2, 'OfficerTwo', 'Budget', NULL, 'grantarachea09@gmail.com', 'budget.officer2', 'budget_officer', 2, 1, 1, 'nvnbaN4tHhSJVGlCi9OJkPOUKmP4tvsXyJPEiR3X', 'c0dea510547aa0374f156589f64c513b66b9c095b96ad11ef6794dcf088ce889', NULL, '2026-02-24 22:02:55', '2026-02-24 22:54:41'),
 (3, 'Aspa', 'Kimberly', 'Catalma', 'aspakimberly@gmail.com', 'kimz', 'user', 3, 1, 1, NULL, NULL, NULL, '2026-02-24 22:02:55', '2026-02-24 22:54:41'),
-(4, 'llamas', 'emman', 'haha', 'emmanllamas052@gmail.com', 'emmansusss', 'astig', NULL, 1, 1, '2xrpxel7dp8qRP2Dw8dIIybWQmREiRkRjGCCzYLr', '2072092935d8895334afeccfd35052bc59f39ed07cf9b5ee5ace37215b0c6e3d', NULL, NULL, '2026-03-02 21:20:30');
+(4, 'llamas', 'emman', 'haha', 'emmanllamas052@gmail.com', 'emmansusss', 'astig', NULL, 1, 1, 'Ihm1fWh4eOMVjLfriVHS18vqWxUy6286QhuQT9XV', 'ab8cd1890ab0fe61072d7a643e16d36a879a22bd9ac35bb0b26b46c8ca8450e5', NULL, NULL, '2026-03-02 23:54:04');
 
 --
 -- Indexes for dumped tables
@@ -583,7 +635,12 @@ ALTER TABLE `procurements`
   ADD UNIQUE KEY `procurements_procurement_no_unique` (`procurement_no`),
   ADD KEY `procurements_requested_by_foreign` (`requested_by`),
   ADD KEY `procurements_procurement_mode_id_foreign` (`procurement_mode_id`),
-  ADD KEY `procurements_project_id_procurement_mode_id_index` (`project_id`,`procurement_mode_id`);
+  ADD KEY `procurements_project_id_procurement_mode_id_index` (`project_id`,`procurement_mode_id`),
+  ADD KEY `procurements_status_idx` (`status`),
+  ADD KEY `procurements_deleted_idx` (`deleted`),
+  ADD KEY `procurements_created_at_idx` (`created_at`),
+  ADD KEY `procurements_requested_by_idx` (`requested_by`),
+  ADD KEY `procurements_deleted_updated_id_idx` (`deleted`,`updated_at`,`id`);
 
 --
 -- Indexes for table `procurement_modes`
@@ -599,6 +656,16 @@ ALTER TABLE `procurement_modes`
 ALTER TABLE `procurement_pdfs`
   ADD PRIMARY KEY (`id`),
   ADD KEY `procurement_pdfs_procurement_id_foreign` (`procurement_id`);
+
+--
+-- Indexes for table `procurement_revisions`
+--
+ALTER TABLE `procurement_revisions`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `proc_rev_proc_created_idx` (`procurement_id`,`created_at`),
+  ADD KEY `proc_rev_actor_idx` (`actor_user_id`),
+  ADD KEY `proc_rev_entity_idx` (`entity_type`,`entity_id`),
+  ADD KEY `proc_rev_action_idx` (`action`);
 
 --
 -- Indexes for table `projects`
@@ -632,6 +699,15 @@ ALTER TABLE `sadmin`
   ADD KEY `users_active_session_id_index` (`active_session_id`);
 
 --
+-- Indexes for table `saros`
+--
+ALTER TABLE `saros`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `saros_procurement_id_unique` (`procurement_id`),
+  ADD KEY `saros_uploaded_by_index` (`uploaded_by`),
+  ADD KEY `saros_created_at_index` (`created_at`);
+
+--
 -- Indexes for table `sessions`
 --
 ALTER TABLE `sessions`
@@ -663,25 +739,25 @@ ALTER TABLE `items`
 -- AUTO_INCREMENT for table `login_otps`
 --
 ALTER TABLE `login_otps`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=30;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
 
 --
 -- AUTO_INCREMENT for table `migrations`
 --
 ALTER TABLE `migrations`
-  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
 
 --
 -- AUTO_INCREMENT for table `procurements`
 --
 ALTER TABLE `procurements`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
 -- AUTO_INCREMENT for table `procurement_modes`
@@ -693,7 +769,13 @@ ALTER TABLE `procurement_modes`
 -- AUTO_INCREMENT for table `procurement_pdfs`
 --
 ALTER TABLE `procurement_pdfs`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `procurement_revisions`
+--
+ALTER TABLE `procurement_revisions`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `projects`
@@ -705,7 +787,7 @@ ALTER TABLE `projects`
 -- AUTO_INCREMENT for table `purchase_requests`
 --
 ALTER TABLE `purchase_requests`
-  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
 
 --
 -- AUTO_INCREMENT for table `roles`
@@ -718,6 +800,12 @@ ALTER TABLE `roles`
 --
 ALTER TABLE `sadmin`
   MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `saros`
+--
+ALTER TABLE `saros`
+  MODIFY `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `users`
@@ -747,7 +835,7 @@ ALTER TABLE `notifications`
 ALTER TABLE `procurements`
   ADD CONSTRAINT `procurements_procurement_mode_id_foreign` FOREIGN KEY (`procurement_mode_id`) REFERENCES `procurement_modes` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `procurements_project_id_foreign` FOREIGN KEY (`project_id`) REFERENCES `projects` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `procurements_requested_by_foreign` FOREIGN KEY (`requested_by`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `procurements_requested_by_foreign` FOREIGN KEY (`requested_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `procurement_pdfs`
@@ -756,10 +844,24 @@ ALTER TABLE `procurement_pdfs`
   ADD CONSTRAINT `procurement_pdfs_procurement_id_foreign` FOREIGN KEY (`procurement_id`) REFERENCES `procurements` (`id`) ON DELETE CASCADE;
 
 --
+-- Constraints for table `procurement_revisions`
+--
+ALTER TABLE `procurement_revisions`
+  ADD CONSTRAINT `procurement_revisions_actor_user_id_foreign` FOREIGN KEY (`actor_user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `procurement_revisions_procurement_id_foreign` FOREIGN KEY (`procurement_id`) REFERENCES `procurements` (`id`) ON DELETE CASCADE;
+
+--
 -- Constraints for table `purchase_requests`
 --
 ALTER TABLE `purchase_requests`
   ADD CONSTRAINT `purchase_requests_procurement_id_foreign` FOREIGN KEY (`procurement_id`) REFERENCES `procurements` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `saros`
+--
+ALTER TABLE `saros`
+  ADD CONSTRAINT `saros_procurement_id_foreign` FOREIGN KEY (`procurement_id`) REFERENCES `procurements` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `saros_uploaded_by_foreign` FOREIGN KEY (`uploaded_by`) REFERENCES `users` (`id`) ON DELETE SET NULL;
 
 --
 -- Constraints for table `users`
