@@ -6,6 +6,7 @@ use App\Models\Notification;
 use App\Models\Procurement;
 use App\Models\ProcurementPdf;
 use App\Models\PurchaseRequest;
+use App\Models\Saro;
 use App\Models\User;
 use App\Services\ProcurementRevisionLogger;
 use Illuminate\Http\JsonResponse;
@@ -550,6 +551,104 @@ class ProcurementController extends Controller
         ]);
     }
 
+    public function duplicate(Request $request, Procurement $procurement): JsonResponse
+    {
+        $procurement->load([
+            'pdfs',
+            'purchaseRequest.items',
+            'saro',
+        ]);
+
+        $duplicated = DB::transaction(function () use ($request, $procurement): Procurement {
+            $clone = Procurement::create([
+                'procurement_no' => 'TMP-'.Str::uuid(),
+                'title' => $procurement->title,
+                'procurement_mode_id' => $procurement->procurement_mode_id,
+                'project_id' => $procurement->project_id,
+                'status' => 'pending',
+                'description' => $procurement->description,
+                'requested_by' => $request->user()->id,
+                'deleted' => false,
+            ]);
+
+            $clone->procurement_no = $this->buildProcurementNo($clone);
+            $clone->save();
+
+            foreach ($procurement->pdfs as $pdf) {
+                $clone->pdfs()->create([
+                    'file_name' => $pdf->file_name,
+                    'file_path' => $this->duplicateStoredFilePath($pdf->file_path, $clone->id),
+                    'checklist' => $pdf->checklist,
+                ]);
+            }
+
+            $sourcePurchaseRequest = $procurement->purchaseRequest;
+            if ($sourcePurchaseRequest) {
+                $purchaseRequest = $clone->purchaseRequest()->create([
+                    'purchase_request_number' => 'TMP-'.Str::uuid(),
+                    'office' => $sourcePurchaseRequest->office,
+                    'date_created' => $sourcePurchaseRequest->date_created,
+                    'responsibility_center_code' => $sourcePurchaseRequest->responsibility_center_code,
+                    'purpose' => $sourcePurchaseRequest->purpose,
+                    'deleted' => false,
+                ]);
+
+                $purchaseRequest->purchase_request_number = $this->buildPurchaseRequestNo($purchaseRequest);
+                $purchaseRequest->save();
+
+                foreach ($sourcePurchaseRequest->items as $item) {
+                    $purchaseRequest->items()->create([
+                        'item_no' => $item->item_no,
+                        'stock_no' => $item->stock_no,
+                        'unit' => $item->unit,
+                        'item_description' => $item->item_description,
+                        'item_inclusions' => $item->item_inclusions,
+                        'quantity' => $item->quantity,
+                        'unit_cost' => $item->unit_cost,
+                        'deleted' => false,
+                    ]);
+                }
+            }
+
+            if ($procurement->saro) {
+                $sourceSaro = $procurement->saro;
+                Saro::create([
+                    'procurement_id' => $clone->id,
+                    'uploaded_by' => $request->user()->id,
+                    'file_name' => $sourceSaro->file_name,
+                    'file_path' => $this->duplicateStoredFilePath($sourceSaro->file_path, $clone->id, 'saro'),
+                    'mime_type' => $sourceSaro->mime_type,
+                    'file_size' => $sourceSaro->file_size,
+                    'remarks' => $sourceSaro->remarks,
+                ]);
+            }
+
+            $this->revisionLogger->log(
+                $request,
+                $clone,
+                'procurement_duplicated',
+                'procurement',
+                (int) $clone->id,
+                [
+                    'source_procurement_id' => (int) $procurement->id,
+                    'source_procurement_no' => $procurement->procurement_no,
+                ],
+                [
+                    'procurement_id' => (int) $clone->id,
+                    'procurement_no' => $clone->procurement_no,
+                ],
+                ['source_procurement_id', 'source_procurement_no', 'procurement_id', 'procurement_no']
+            );
+
+            return $clone->fresh()->load($this->procurementRelations());
+        });
+
+        return response()->json([
+            'message' => 'Procurement duplicated successfully.',
+            'procurement' => $duplicated,
+        ], 201);
+    }
+
     private function buildProcurementNo(Procurement $procurement): string
     {
         $year = $procurement->created_at?->format('Y') ?? now()->format('Y');
@@ -577,6 +676,22 @@ class ProcurementController extends Controller
     private function attachmentBelongsToProcurement(Procurement $procurement, ProcurementPdf $attachment): bool
     {
         return (int) $attachment->procurement_id === (int) $procurement->id;
+    }
+
+    private function duplicateStoredFilePath(string $sourcePath, int $targetProcurementId, ?string $subFolder = null): string
+    {
+        if ($sourcePath === '' || ! Storage::disk('public')->exists($sourcePath)) {
+            return $sourcePath;
+        }
+
+        $extension = pathinfo($sourcePath, PATHINFO_EXTENSION);
+        $targetDir = 'procurements/'.$targetProcurementId.($subFolder ? '/'.$subFolder : '');
+        $targetFileName = Str::uuid().($extension ? '.'.$extension : '');
+        $targetPath = $targetDir.'/'.$targetFileName;
+
+        Storage::disk('public')->copy($sourcePath, $targetPath);
+
+        return $targetPath;
     }
 
     private function notifyBudgetOfficersOnSubmission(Procurement $procurement, User $actor): void
