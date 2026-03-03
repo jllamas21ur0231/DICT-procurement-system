@@ -133,27 +133,30 @@ class AuthController extends Controller
                 'updated_at' => now(),
             ]);
 
+        // ── Single-session enforcement ─────────────────────────────────────────
+        // If the user is already logged in on another device, refuse this login.
+        if ($user->active_session_id) {
+            return response()->json([
+                'message' => 'You are already logged in on another device. Please log out there first.',
+            ], 409);
+        }
+
         Auth::login($user);
         $request->session()->regenerate();
 
         $currentSessionId = $request->session()->getId();
         $deviceId = $request->cookie('device_id') ?: (string) Str::uuid();
 
-        if ($user->active_session_id && $user->active_session_id !== $currentSessionId) {
-            DB::table(config('session.table', 'sessions'))
-                ->where('id', $user->active_session_id)
-                ->delete();
-        }
-
         $user->forceFill([
-            'active_session_id' => $currentSessionId,
+            'active_session_id'         => $currentSessionId,
             'active_device_fingerprint' => hash('sha256', $deviceId.'|'.$request->userAgent()),
         ])->save();
 
         return response()->json([
             'message' => 'Login successful.',
-            'user' => $user,
+            'user'    => $user,
         ])->cookie('device_id', $deviceId, 60 * 24 * 365 * 5);
+
     }
 
     public function resendOtp(Request $request): JsonResponse
