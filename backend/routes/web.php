@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AdminAccountController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProcurementController;
 use App\Http\Controllers\ProcurementModeController;
@@ -9,6 +10,7 @@ use App\Http\Controllers\PurchaseRequestController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SaroController;
 use App\Http\Controllers\SuperAdminAccountController;
+use App\Http\Controllers\SuperAdminReadController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -87,5 +89,31 @@ Route::middleware(['auth', 'active.device'])->group(function (): void {
         Route::put('/{user}', [SuperAdminAccountController::class, 'update']);
         Route::delete('/{user}', [SuperAdminAccountController::class, 'deactivate']);
         Route::patch('/{user}/activate', [SuperAdminAccountController::class, 'activate']);
+    });
+
+    // super admin read-only data routes
+    Route::prefix('super-admin/data')->group(function (): void {
+        Route::get('/overview', [SuperAdminReadController::class, 'overview']);
+        Route::get('/users', [SuperAdminReadController::class, 'users']);
+        Route::get('/procurements', [SuperAdminReadController::class, 'procurements']);
+        Route::get('/purchase-requests', [SuperAdminReadController::class, 'purchaseRequests']);
+        Route::get('/revisions', [SuperAdminReadController::class, 'revisions']);
+        Route::get('/projects', [SuperAdminReadController::class, 'projects']);
+        Route::get('/procurement-modes', [SuperAdminReadController::class, 'procurementModes']);
+    });
+
+    // admin account management routes (no deactivate)
+    Route::prefix('admin/accounts')->group(function (): void {
+        Route::get('/', [AdminAccountController::class, 'index']);
+        Route::post('/', [AdminAccountController::class, 'store']);
+        Route::put('/{user}', [AdminAccountController::class, 'update']);
+    });
+
+    Route::prefix('admin/projects')->group(function (): void {
+        Route::post('/', [ProjectController::class, 'store']);
+    });
+
+    Route::prefix('admin/procurement-modes')->group(function (): void {
+        Route::post('/', [ProcurementModeController::class, 'store']);
     });
 });

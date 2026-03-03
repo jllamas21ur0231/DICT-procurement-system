@@ -172,7 +172,7 @@ class ProcurementController extends Controller
 
     public function revisions(Request $request, Procurement $procurement): JsonResponse
     {
-        if (! $this->canModify($request, $procurement)) {
+        if (! $this->canViewRestrictedData($request, $procurement)) {
             return response()->json([
                 'message' => 'You are not allowed to view revisions for this procurement.',
             ], 403);
@@ -456,7 +456,7 @@ class ProcurementController extends Controller
 
     public function showAttachment(Request $request, Procurement $procurement, ProcurementPdf $attachment): JsonResponse
     {
-        if (! $this->canModify($request, $procurement)) {
+        if (! $this->canViewRestrictedData($request, $procurement)) {
             return response()->json([
                 'message' => 'You are not allowed to view this attachment.',
             ], 403);
@@ -473,7 +473,7 @@ class ProcurementController extends Controller
 
     public function downloadAttachment(Request $request, Procurement $procurement, ProcurementPdf $attachment): BinaryFileResponse|JsonResponse
     {
-        if (! $this->canModify($request, $procurement)) {
+        if (! $this->canViewRestrictedData($request, $procurement)) {
             return response()->json([
                 'message' => 'You are not allowed to download this attachment.',
             ], 403);
@@ -670,6 +670,17 @@ class ProcurementController extends Controller
         return $user && (
             $procurement->requested_by === $user->id
             || $this->isBudgetOfficer($user)
+        );
+    }
+
+    private function canViewRestrictedData(Request $request, Procurement $procurement): bool
+    {
+        $user = $request->user();
+
+        return $user && (
+            $procurement->requested_by === $user->id
+            || $this->isBudgetOfficer($user)
+            || $this->isSuperAdmin($user)
         );
     }
 
@@ -923,5 +934,31 @@ class ProcurementController extends Controller
         ])));
 
         return str_contains($haystack, 'budget officer');
+    }
+
+    private function isSuperAdmin(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        $accessType = strtolower(trim((string) $user->access_type));
+        if (in_array($accessType, ['super_admin', 'super admin', 'superadmin'], true)) {
+            return true;
+        }
+
+        $role = $user->role;
+        if (! $role) {
+            return false;
+        }
+
+        $haystack = strtolower(trim(implode(' ', [
+            (string) $role->role_type,
+            (string) $role->position,
+            (string) $role->designation,
+            (string) $role->role,
+        ])));
+
+        return str_contains($haystack, 'super admin');
     }
 }

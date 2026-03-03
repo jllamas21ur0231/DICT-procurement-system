@@ -33,6 +33,14 @@ return Application::configure(basePath: dirname(__DIR__))
             'notifications/*',
             'super-admin/accounts',
             'super-admin/accounts/*',
+            'super-admin/data',
+            'super-admin/data/*',
+            'admin/accounts',
+            'admin/accounts/*',
+            'admin/projects',
+            'admin/projects/*',
+            'admin/procurement-modes',
+            'admin/procurement-modes/*',
         ]);
 
     })

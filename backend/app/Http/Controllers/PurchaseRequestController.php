@@ -39,7 +39,7 @@ class PurchaseRequestController extends Controller
 
     public function show(Request $request, PurchaseRequest $purchaseRequest): JsonResponse
     {
-        if (! $this->canModify($request, $purchaseRequest)) {
+        if (! $this->canView($request, $purchaseRequest)) {
             return response()->json(['message' => 'You are not allowed to view this purchase request.'], 403);
         }
 
@@ -368,6 +368,18 @@ class PurchaseRequestController extends Controller
         );
     }
 
+    private function canView(Request $request, PurchaseRequest $purchaseRequest): bool
+    {
+        $user = $request->user();
+        $procurement = $purchaseRequest->procurement;
+
+        return $user && $procurement && (
+            (int) $procurement->requested_by === (int) $user->id
+            || $this->isBudgetOfficer($user)
+            || $this->isSuperAdmin($user)
+        );
+    }
+
     private function isBudgetOfficer(?User $user): bool
     {
         if (! $user) {
@@ -392,5 +404,31 @@ class PurchaseRequestController extends Controller
         ])));
 
         return str_contains($haystack, 'budget officer');
+    }
+
+    private function isSuperAdmin(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        $accessType = strtolower(trim((string) $user->access_type));
+        if (in_array($accessType, ['super_admin', 'super admin', 'superadmin'], true)) {
+            return true;
+        }
+
+        $role = $user->role;
+        if (! $role) {
+            return false;
+        }
+
+        $haystack = strtolower(trim(implode(' ', [
+            (string) $role->role_type,
+            (string) $role->position,
+            (string) $role->designation,
+            (string) $role->role,
+        ])));
+
+        return str_contains($haystack, 'super admin');
     }
 }
