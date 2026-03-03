@@ -1,2 +1,8 @@
 *
 !.gitignore
+!procurements/
+procurements/*
+!procurements/.gitkeep
+!procurements/saro/
+procurements/saro/*
+!procurements/saro/.gitkeep

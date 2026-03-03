@@ -53,4 +53,9 @@ class Procurement extends Model
     {
         return $this->hasMany(ProcurementRevision::class);
     }
+
+    public function saro()
+    {
+        return $this->hasOne(Saro::class);
+    }
 }

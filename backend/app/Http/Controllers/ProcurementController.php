@@ -774,6 +774,7 @@ class ProcurementController extends Controller
             'projectRecord',
             'procurementMode',
             'pdfs',
+            'saro',
             'purchaseRequest' => function ($purchaseRequestQuery): void {
                 $purchaseRequestQuery->where('deleted', false)
                     ->with([
