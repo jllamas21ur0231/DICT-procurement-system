@@ -213,6 +213,30 @@ class SAdminController extends Controller
     }
 
     /**
+     * Return all purchase requests — no user-scope filtering (sAdmin view).
+     */
+    public function purchaseRequests(): JsonResponse
+    {
+        $prs = \App\Models\PurchaseRequest::query()
+            ->where('deleted', false)
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id')
+            ->get([
+                'id',
+                'purchase_request_number',
+                'office',
+                'responsibility_center_code',
+                'purpose',
+                'date_created',
+                'created_at',
+                'updated_at',
+            ]);
+
+        return response()->json($prs);
+    }
+
+
+    /**
      * Delete (deactivate) a user by ID.
      */
     public function deleteUser(int $id): JsonResponse

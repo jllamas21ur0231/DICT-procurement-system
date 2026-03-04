@@ -143,6 +143,7 @@ Route::prefix('sadmin')->group(function (): void {
         Route::post('/projects',                               [SAdminController::class,       'storeProject']);
         Route::get('/procurement-modes',                       [ProcurementModeController::class, 'index']);
         Route::post('/procurement-modes',                      [SAdminController::class,       'storeProcurementMode']);
+        Route::get('/purchase-requests',                       [SAdminController::class,       'purchaseRequests']);
     });
 });
 

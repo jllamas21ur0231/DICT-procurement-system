@@ -1,8 +1,8 @@
-import SAdminSidebar from './sAdminSidebar';
-
 import { useState } from 'react';
+import SAdminSidebar from './sAdminSidebar';
 import Profile from '../pages/Profile';
 import Notification from '../pages/Notification';
+import { SearchProvider, useSearch } from '../context/SearchContext';
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
+// ── Icons ───────────────────────────────────────────────────────────────────
 const BellIcon = () => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
@@ -46,9 +47,9 @@ const ChevronDown = () => (
 
 const FILTER_OPTIONS = ["All", "Procurement", "PPMP", "Purchase Request"];
 
-export default function SAdminMainLayout({ children }) {
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('All');
+// ── Inner layout — consumes the context provided by the wrapper below ────────
+function SAdminMainLayoutInner({ children }) {
+  const { search, setSearch, filter, setFilter } = useSearch();
   const [notifCount] = useState(2);
   const [showProfile, setShowProfile] = useState(false);
   const [showNotif, setShowNotif] = useState(false);
@@ -58,14 +59,11 @@ export default function SAdminMainLayout({ children }) {
       <div className="flex min-h-screen bg-gray-100">
         <SAdminSidebar />
 
-
         <div className="flex flex-col flex-1 min-w-0">
-
           <header className="h-16 bg-transparent flex items-center justify-end px-8 gap-5 flex-shrink-0">
 
-
+            {/* Search bar */}
             <div className="flex items-center bg-gray-100 rounded-lg overflow-hidden h-9">
-
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost"
@@ -78,7 +76,8 @@ export default function SAdminMainLayout({ children }) {
                   <DropdownMenuLabel className="text-xs text-gray-400">Filter by</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {FILTER_OPTIONS.map((opt) => (
-                    <DropdownMenuItem key={opt} onClick={() => setFilter(opt)}
+                    <DropdownMenuItem key={opt}
+                      onClick={() => { setFilter(opt); setSearch(''); }}
                       className={cn("cursor-pointer text-sm", filter === opt && "font-semibold text-[#134C62]")}>
                       {opt}
                     </DropdownMenuItem>
@@ -103,8 +102,7 @@ export default function SAdminMainLayout({ children }) {
             <Separator orientation="vertical" className="h-6" />
 
             <Button
-              variant="ghost"
-              size="icon"
+              variant="ghost" size="icon"
               onClick={() => setShowNotif(!showNotif)}
               className="relative rounded-full text-gray-500 hover:text-[#134C62] hover:bg-gray-100 w-9 h-9"
             >
@@ -116,35 +114,32 @@ export default function SAdminMainLayout({ children }) {
               )}
             </Button>
 
-
             <Button
-              variant="ghost"
-              size="icon"
+              variant="ghost" size="icon"
               onClick={() => setShowProfile(true)}
               className="rounded-full text-gray-500 hover:text-[#134C62] hover:bg-gray-100 w-9 h-9"
             >
               <UserIcon />
             </Button>
-
           </header>
 
           <main className="flex-1 p-8 overflow-y-auto">
             {children}
           </main>
-
         </div>
       </div>
 
-
-      <Profile
-        isOpen={showProfile}
-        onClose={() => setShowProfile(false)}
-      />
-
-      <Notification
-        isOpen={showNotif}
-        onClose={() => setShowNotif(false)}
-      />
+      <Profile isOpen={showProfile} onClose={() => setShowProfile(false)} />
+      <Notification isOpen={showNotif} onClose={() => setShowNotif(false)} />
     </>
+  );
+}
+
+// ── Default export — provides the context, then renders the inner layout ────
+export default function SAdminMainLayout({ children }) {
+  return (
+    <SearchProvider>
+      <SAdminMainLayoutInner>{children}</SAdminMainLayoutInner>
+    </SearchProvider>
   );
 }
