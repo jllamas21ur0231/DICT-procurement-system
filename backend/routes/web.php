@@ -2,16 +2,21 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AdminAccountController;
+use App\Http\Controllers\AppAttachmentController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProcurementController;
 use App\Http\Controllers\ProcurementModeController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\PpmpAttachmentController;
+use App\Http\Controllers\MsriAttachmentController;
 use App\Http\Controllers\PurchaseRequestController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SAdminController;
 use App\Http\Controllers\SaroController;
+use App\Http\Controllers\SrfiAttachmentController;
 use App\Http\Controllers\SuperAdminAccountController;
 use App\Http\Controllers\SuperAdminReadController;
+use App\Http\Controllers\TechnicalSpecificationAttachmentController;
 use Illuminate\Support\Facades\Route;
 
 
@@ -53,6 +58,36 @@ Route::middleware(['auth', 'active.device'])->group(function (): void {
         Route::get('/{procurement}/saro', [SaroController::class, 'show']);
         Route::get('/{procurement}/saro/download', [SaroController::class, 'download']);
         Route::delete('/{procurement}/saro', [SaroController::class, 'destroy']);
+
+        Route::post('/{procurement}/app', [AppAttachmentController::class, 'upload']);
+        Route::put('/{procurement}/app', [AppAttachmentController::class, 'replace']);
+        Route::get('/{procurement}/app', [AppAttachmentController::class, 'show']);
+        Route::get('/{procurement}/app/download', [AppAttachmentController::class, 'download']);
+        Route::delete('/{procurement}/app', [AppAttachmentController::class, 'destroy']);
+
+        Route::post('/{procurement}/ppmp', [PpmpAttachmentController::class, 'upload']);
+        Route::put('/{procurement}/ppmp', [PpmpAttachmentController::class, 'replace']);
+        Route::get('/{procurement}/ppmp', [PpmpAttachmentController::class, 'show']);
+        Route::get('/{procurement}/ppmp/download', [PpmpAttachmentController::class, 'download']);
+        Route::delete('/{procurement}/ppmp', [PpmpAttachmentController::class, 'destroy']);
+
+        Route::post('/{procurement}/msri', [MsriAttachmentController::class, 'upload']);
+        Route::put('/{procurement}/msri', [MsriAttachmentController::class, 'replace']);
+        Route::get('/{procurement}/msri', [MsriAttachmentController::class, 'show']);
+        Route::get('/{procurement}/msri/download', [MsriAttachmentController::class, 'download']);
+        Route::delete('/{procurement}/msri', [MsriAttachmentController::class, 'destroy']);
+
+        Route::post('/{procurement}/srfi', [SrfiAttachmentController::class, 'upload']);
+        Route::put('/{procurement}/srfi', [SrfiAttachmentController::class, 'replace']);
+        Route::get('/{procurement}/srfi', [SrfiAttachmentController::class, 'show']);
+        Route::get('/{procurement}/srfi/download', [SrfiAttachmentController::class, 'download']);
+        Route::delete('/{procurement}/srfi', [SrfiAttachmentController::class, 'destroy']);
+        Route::post('/{procurement}/technical-specifications', [TechnicalSpecificationAttachmentController::class, 'upload']);
+        Route::get('/{procurement}/technical-specifications', [TechnicalSpecificationAttachmentController::class, 'index']);
+        Route::get('/{procurement}/technical-specifications/{technicalSpecification}', [TechnicalSpecificationAttachmentController::class, 'show']);
+        Route::get('/{procurement}/technical-specifications/{technicalSpecification}/download', [TechnicalSpecificationAttachmentController::class, 'download']);
+        Route::put('/{procurement}/technical-specifications/{technicalSpecification}', [TechnicalSpecificationAttachmentController::class, 'update']);
+        Route::delete('/{procurement}/technical-specifications/{technicalSpecification}', [TechnicalSpecificationAttachmentController::class, 'destroy']);
     });
     // purchase request routes
     Route::prefix('purchase-requests')->group(function (): void {
@@ -121,15 +156,15 @@ Route::middleware(['auth', 'active.device'])->group(function (): void {
     });
 });
 
-// ── sAdmin routes ──────────────────────────────────────────────────────────────
+// -- sAdmin routes --------------------------------------------------------------
 Route::prefix('sadmin')->group(function (): void {
 
-    // ── Open: OTP auth (no session required) ──────────────────────────────────
+    // -- Open: OTP auth (no session required) ----------------------------------
     Route::post('/request-otp', [SAdminController::class, 'requestSAdminOtp']);
     Route::post('/verify-otp',  [SAdminController::class, 'verifySAdminOtp']);
     Route::post('/resend-otp',  [SAdminController::class, 'resendSAdminOtp']);
 
-    // ── Protected: require a valid sAdmin session ──────────────────────────────
+    // -- Protected: require a valid sAdmin session ------------------------------
     Route::middleware('active.sadmin')->group(function (): void {
         Route::get('/me',                                      [SAdminController::class,       'me']);
         Route::post('/logout',                                 [SAdminController::class,       'logoutSAdmin']);
@@ -138,7 +173,7 @@ Route::prefix('sadmin')->group(function (): void {
         Route::post('/procurements/{procurement}/attachments', [SAdminController::class,       'uploadProcurementAttachment']);
         Route::get('/users',                                   [SAdminController::class,       'users']);
         Route::delete('/users/{id}',                           [SAdminController::class,       'deleteUser']);
-        // Reference data — readable by sAdmin
+        // Reference data � readable by sAdmin
         Route::get('/projects',                                [ProjectController::class,      'index']);
         Route::post('/projects',                               [SAdminController::class,       'storeProject']);
         Route::get('/procurement-modes',                       [ProcurementModeController::class, 'index']);
@@ -146,6 +181,11 @@ Route::prefix('sadmin')->group(function (): void {
         Route::get('/purchase-requests',                       [SAdminController::class,       'purchaseRequests']);
     });
 });
+
+
+
+
+
 
 
 
