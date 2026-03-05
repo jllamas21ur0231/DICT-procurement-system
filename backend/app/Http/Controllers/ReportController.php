@@ -41,7 +41,7 @@ class ReportController extends Controller
         return [
             'total' => (clone $base)->count(),
             'pending' => (clone $base)->where('status', 'pending')->count(),
-            'accepted' => (clone $base)->where('status', 'accepted')->count(),
+            'approved' => (clone $base)->where('status', 'approved')->count(),
             'rejected' => (clone $base)->where('status', 'rejected')->count(),
         ];
     }
@@ -51,9 +51,9 @@ class ReportController extends Controller
         $base = Procurement::query()->where('deleted', false);
 
         return [
-            'ongoing' => (clone $base)->count(),
+            'total' => (clone $base)->count(),
             'pending' => (clone $base)->where('status', 'pending')->count(),
-            'accepted' => (clone $base)->where('status', 'accepted')->count(),
+            'approved' => (clone $base)->where('status', 'approved')->count(),
             'rejected' => (clone $base)->where('status', 'rejected')->count(),
         ];
     }

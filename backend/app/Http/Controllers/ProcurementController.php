@@ -15,10 +15,13 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ProcurementController extends Controller
 {
+    private const ALLOWED_STATUSES = ['pending', 'approved', 'rejected'];
+
     public function __construct(private readonly ProcurementRevisionLogger $revisionLogger) {}
 
     public function search(Request $request): JsonResponse
@@ -110,7 +113,7 @@ class ProcurementController extends Controller
     public function filter(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'status' => ['nullable', 'string', 'max:50'],
+            'status' => ['nullable', Rule::in(self::ALLOWED_STATUSES)],
             'requested_by' => ['nullable', 'string', 'max:255'],
             'project' => ['nullable', 'string', 'max:255'],
             'procurement_mode' => ['nullable', 'string', 'max:255'],
@@ -225,7 +228,7 @@ class ProcurementController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'procurement_mode_id' => ['required', 'integer', 'exists:procurement_modes,id'],
             'project_id' => ['required', 'integer', 'exists:projects,id'],
-            'status' => ['nullable', 'string', 'max:50'],
+            'status' => ['nullable', Rule::in(self::ALLOWED_STATUSES)],
             'description' => ['nullable', 'string'],
             'purchase_request' => ['required', 'array'],
             'purchase_request.office' => ['required', 'string', 'max:255'],
@@ -335,7 +338,7 @@ class ProcurementController extends Controller
             'title' => ['sometimes', 'string', 'max:255'],
             'procurement_mode_id' => ['sometimes', 'integer', 'exists:procurement_modes,id'],
             'project_id' => ['sometimes', 'integer', 'exists:projects,id'],
-            'status' => ['sometimes', 'string', 'max:50'],
+            'status' => ['sometimes', Rule::in(self::ALLOWED_STATUSES)],
             'description' => ['nullable', 'string'],
             'pdfs' => ['sometimes', 'array'],
             'pdfs.*.file_name' => ['required_with:pdfs', 'string', 'max:255'],
@@ -802,8 +805,6 @@ class ProcurementController extends Controller
         $type = match ($normalizedStatus) {
             'approved' => 'procurement_approved',
             'rejected' => 'procurement_rejected',
-            'accepted' => 'procurement_accepted',
-            'ongoing' => 'procurement_ongoing',
             default => 'procurement_status_updated',
         };
 

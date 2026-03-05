@@ -19,7 +19,7 @@ class ProcurementDemoSeeder extends Seeder
         $units = ['pcs', 'box', 'set'];
         $modes = ['Shopping', 'Public Bidding', 'Direct Contracting'];
         $projects = ['Office Upgrade', 'IT Infrastructure', 'Facilities Maintenance'];
-        $statuses = ['pending', 'ongoing', 'approved'];
+        $statuses = ['pending', 'approved', 'rejected'];
 
         $modeModels = collect($modes)->mapWithKeys(function (string $mode): array {
             $record = ProcurementMode::query()->firstOrCreate(

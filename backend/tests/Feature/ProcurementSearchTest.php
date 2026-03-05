@@ -114,7 +114,7 @@ class ProcurementSearchTest extends TestCase
             'title' => 'Generator Repair',
             'procurement_mode_id' => $shopping->id,
             'project_id' => $facility->id,
-            'status' => 'ongoing',
+            'status' => 'approved',
             'description' => 'Diesel generator repair works',
             'requested_by' => $user->id,
             'deleted' => false,
