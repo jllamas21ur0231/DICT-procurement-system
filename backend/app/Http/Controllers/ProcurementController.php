@@ -838,10 +838,7 @@ class ProcurementController extends Controller
     {
         $user = $request->user();
 
-        return $user && (
-            $procurement->requested_by === $user->id
-            || $this->isBudgetOfficer($user)
-        );
+        return (bool) $user;
     }
 
     private function canViewRestrictedData(Request $request, Procurement $procurement): bool
@@ -1043,7 +1040,6 @@ class ProcurementController extends Controller
         return str_contains($haystack, 'super admin');
     }
 }
-
 
 
 
