@@ -2,10 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AppAttachment;
+use App\Models\Notification;
 use App\Models\Procurement;
 use App\Models\ProcurementPdf;
+use App\Models\PpmpAttachment;
+use App\Models\MsriAttachment;
 use App\Models\PurchaseRequest;
+use App\Models\SrfiAttachment;
 use App\Models\Saro;
+use App\Models\TechnicalSpecificationAttachment;
 use App\Models\User;
 use App\Services\NotificationWorkflowService;
 use App\Services\ProcurementRevisionLogger;
@@ -243,10 +249,30 @@ class ProcurementController extends Controller
             'purchase_request.items.*.item_inclusions' => ['nullable', 'string'],
             'purchase_request.items.*.quantity' => ['required_with:purchase_request.items', 'numeric', 'min:0.01'],
             'purchase_request.items.*.unit_cost' => ['required_with:purchase_request.items', 'numeric', 'min:0'],
-            'pdfs' => ['nullable', 'array'],
-            'pdfs.*.file_name' => ['required_with:pdfs', 'string', 'max:255'],
-            'pdfs.*.file_path' => ['required_with:pdfs', 'string', 'max:1000'],
-            'pdfs.*.checklist' => ['required_with:pdfs', 'array'],
+            'app' => ['nullable', 'array'],
+            'app.file_name' => ['required_with:app', 'string', 'max:255'],
+            'app.file_path' => ['required_with:app', 'string', 'max:1000'],
+            'app.mime_type' => ['required_with:app', 'string', 'max:150'],
+            'app.file_size' => ['required_with:app', 'integer', 'min:1'],
+            'app.remarks' => ['nullable', 'string', 'max:2000'],
+            'ppmp' => ['nullable', 'array'],
+            'ppmp.file_name' => ['required_with:ppmp', 'string', 'max:255'],
+            'ppmp.file_path' => ['required_with:ppmp', 'string', 'max:1000'],
+            'ppmp.mime_type' => ['required_with:ppmp', 'string', 'max:150'],
+            'ppmp.file_size' => ['required_with:ppmp', 'integer', 'min:1'],
+            'ppmp.remarks' => ['nullable', 'string', 'max:2000'],
+            'msri' => ['nullable', 'array'],
+            'msri.file_name' => ['required_with:msri', 'string', 'max:255'],
+            'msri.file_path' => ['required_with:msri', 'string', 'max:1000'],
+            'msri.mime_type' => ['required_with:msri', 'string', 'max:150'],
+            'msri.file_size' => ['required_with:msri', 'integer', 'min:1'],
+            'msri.remarks' => ['nullable', 'string', 'max:2000'],
+            'srfi' => ['nullable', 'array'],
+            'srfi.file_name' => ['required_with:srfi', 'string', 'max:255'],
+            'srfi.file_path' => ['required_with:srfi', 'string', 'max:1000'],
+            'srfi.mime_type' => ['required_with:srfi', 'string', 'max:150'],
+            'srfi.file_size' => ['required_with:srfi', 'integer', 'min:1'],
+            'srfi.remarks' => ['nullable', 'string', 'max:2000'],
         ]);
 
         $procurement = DB::transaction(function () use ($request, $validated): Procurement {
@@ -264,14 +290,52 @@ class ProcurementController extends Controller
             $procurement->procurement_no = $this->buildProcurementNo($procurement);
             $procurement->save();
 
-            foreach ($validated['pdfs'] ?? [] as $pdf) {
-                $procurement->pdfs()->create([
-                    'file_name' => $pdf['file_name'],
-                    'file_path' => $pdf['file_path'],
-                    'checklist' => $pdf['checklist'],
+            if (isset($validated['app'])) {
+                AppAttachment::create([
+                    'procurement_id' => $procurement->id,
+                    'uploaded_by' => $request->user()->id,
+                    'file_name' => $validated['app']['file_name'],
+                    'file_path' => $validated['app']['file_path'],
+                    'mime_type' => $validated['app']['mime_type'],
+                    'file_size' => $validated['app']['file_size'],
+                    'remarks' => $validated['app']['remarks'] ?? null,
                 ]);
             }
 
+            if (isset($validated['ppmp'])) {
+                PpmpAttachment::create([
+                    'procurement_id' => $procurement->id,
+                    'uploaded_by' => $request->user()->id,
+                    'file_name' => $validated['ppmp']['file_name'],
+                    'file_path' => $validated['ppmp']['file_path'],
+                    'mime_type' => $validated['ppmp']['mime_type'],
+                    'file_size' => $validated['ppmp']['file_size'],
+                    'remarks' => $validated['ppmp']['remarks'] ?? null,
+                ]);
+            }
+            if (isset($validated['msri'])) {
+                MsriAttachment::create([
+                    'procurement_id' => $procurement->id,
+                    'uploaded_by' => $request->user()->id,
+                    'file_name' => $validated['msri']['file_name'],
+                    'file_path' => $validated['msri']['file_path'],
+                    'mime_type' => $validated['msri']['mime_type'],
+                    'file_size' => $validated['msri']['file_size'],
+                    'remarks' => $validated['msri']['remarks'] ?? null,
+                ]);
+            }
+
+            if (isset($validated['srfi'])) {
+                SrfiAttachment::create([
+                    'procurement_id' => $procurement->id,
+                    'uploaded_by' => $request->user()->id,
+                    'file_name' => $validated['srfi']['file_name'],
+                    'file_path' => $validated['srfi']['file_path'],
+                    'mime_type' => $validated['srfi']['mime_type'],
+                    'file_size' => $validated['srfi']['file_size'],
+                    'remarks' => $validated['srfi']['remarks'] ?? null,
+                ]);
+            }
             $purchaseRequest = $procurement->purchaseRequest()->create([
                 'purchase_request_number' => 'TMP-'.Str::uuid(),
                 'office' => $validated['purchase_request']['office'],
@@ -591,6 +655,11 @@ class ProcurementController extends Controller
     {
         $procurement->load([
             'pdfs',
+            'appAttachment',
+            'ppmpAttachment',
+            'msriAttachment',
+            'srfiAttachment',
+            'technicalSpecificationAttachments',
             'purchaseRequest.items',
             'saro',
         ]);
@@ -646,6 +715,57 @@ class ProcurementController extends Controller
                 }
             }
 
+            if ($procurement->appAttachment) {
+                $sourceApp = $procurement->appAttachment;
+                AppAttachment::create([
+                    'procurement_id' => $clone->id,
+                    'uploaded_by' => $request->user()->id,
+                    'file_name' => $sourceApp->file_name,
+                    'file_path' => $this->duplicateStoredFilePath($sourceApp->file_path, $clone->id, 'app'),
+                    'mime_type' => $sourceApp->mime_type,
+                    'file_size' => $sourceApp->file_size,
+                    'remarks' => $sourceApp->remarks,
+                ]);
+            }
+
+            if ($procurement->ppmpAttachment) {
+                $sourcePpmp = $procurement->ppmpAttachment;
+                PpmpAttachment::create([
+                    'procurement_id' => $clone->id,
+                    'uploaded_by' => $request->user()->id,
+                    'file_name' => $sourcePpmp->file_name,
+                    'file_path' => $this->duplicateStoredFilePath($sourcePpmp->file_path, $clone->id, 'ppmp'),
+                    'mime_type' => $sourcePpmp->mime_type,
+                    'file_size' => $sourcePpmp->file_size,
+                    'remarks' => $sourcePpmp->remarks,
+                ]);
+            }
+
+            if ($procurement->msriAttachment) {
+                $sourceMsri = $procurement->msriAttachment;
+                MsriAttachment::create([
+                    'procurement_id' => $clone->id,
+                    'uploaded_by' => $request->user()->id,
+                    'file_name' => $sourceMsri->file_name,
+                    'file_path' => $this->duplicateStoredFilePath($sourceMsri->file_path, $clone->id, 'msri'),
+                    'mime_type' => $sourceMsri->mime_type,
+                    'file_size' => $sourceMsri->file_size,
+                    'remarks' => $sourceMsri->remarks,
+                ]);
+            }
+
+            if ($procurement->srfiAttachment) {
+                $sourceSrfi = $procurement->srfiAttachment;
+                SrfiAttachment::create([
+                    'procurement_id' => $clone->id,
+                    'uploaded_by' => $request->user()->id,
+                    'file_name' => $sourceSrfi->file_name,
+                    'file_path' => $this->duplicateStoredFilePath($sourceSrfi->file_path, $clone->id, 'srfi'),
+                    'mime_type' => $sourceSrfi->mime_type,
+                    'file_size' => $sourceSrfi->file_size,
+                    'remarks' => $sourceSrfi->remarks,
+                ]);
+            }
             if ($procurement->saro) {
                 $sourceSaro = $procurement->saro;
                 Saro::create([
@@ -656,6 +776,21 @@ class ProcurementController extends Controller
                     'mime_type' => $sourceSaro->mime_type,
                     'file_size' => $sourceSaro->file_size,
                     'remarks' => $sourceSaro->remarks,
+                ]);
+            }
+
+            foreach ($procurement->technicalSpecificationAttachments as $sourceTechnicalSpecification) {
+                TechnicalSpecificationAttachment::create([
+                    'procurement_id' => $clone->id,
+                    'uploaded_by' => $request->user()->id,
+                    'spec_type' => $sourceTechnicalSpecification->spec_type,
+                    'label' => $sourceTechnicalSpecification->label,
+                    'file_name' => $sourceTechnicalSpecification->file_name,
+                    'file_path' => $this->duplicateStoredFilePath($sourceTechnicalSpecification->file_path, $clone->id, 'technical-specifications'),
+                    'mime_type' => $sourceTechnicalSpecification->mime_type,
+                    'file_size' => $sourceTechnicalSpecification->file_size,
+                    'remarks' => $sourceTechnicalSpecification->remarks,
+                    'sort_order' => $sourceTechnicalSpecification->sort_order,
                 ]);
             }
 
@@ -841,6 +976,11 @@ class ProcurementController extends Controller
             'projectRecord',
             'procurementMode',
             'pdfs',
+            'appAttachment',
+            'ppmpAttachment',
+            'msriAttachment',
+            'srfiAttachment',
+            'technicalSpecificationAttachments',
             'saro',
             'purchaseRequest' => function ($purchaseRequestQuery): void {
                 $purchaseRequestQuery->where('deleted', false)
@@ -903,3 +1043,18 @@ class ProcurementController extends Controller
         return str_contains($haystack, 'super admin');
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
