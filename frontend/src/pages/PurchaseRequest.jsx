@@ -6,7 +6,7 @@ function PurchaseRequest() {
     const navigate = useNavigate();
 
     const handleCreate = () => {
-       navigate("/create-purchase-request");
+        navigate("/create-purchase-request");
 
     };
 
@@ -53,15 +53,15 @@ function PurchaseRequest() {
     return (
         <div className="min-h-screen bg-gray-100 p-10">
 
-       
-            
+
+
             <div className="flex justify-between items-center mb-6">
                 <h1 className="text-2xl font-semibold">Purchase Request</h1>
 
-               
+
             </div>
 
-          
+
             <div className="bg-white rounded-xl shadow-md overflow-hidden">
                 <table className="w-full text-left">
                     <thead className="bg-[#EEF8FB] text-gray-700 text-sm">
@@ -103,7 +103,7 @@ function PurchaseRequest() {
                 </table>
             </div>
 
-         
+
             <div className="flex justify-center mt-6 text-sm text-gray-600">
                 <span className="cursor-pointer px-2">&lt;</span>
                 <span className="px-2">Page 1 of 3</span>

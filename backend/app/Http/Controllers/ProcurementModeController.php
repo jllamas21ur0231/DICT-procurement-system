@@ -20,7 +20,7 @@ class ProcurementModeController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        if (! $this->isAdmin($request->user())) {
+        if (!$this->isAdmin($request->user())) {
             return response()->json([
                 'message' => 'Only admins can create procurement modes.',
             ], 403);
@@ -54,7 +54,7 @@ class ProcurementModeController extends Controller
 
     private function isAdmin(?User $user): bool
     {
-        if (! $user) {
+        if (!$user) {
             return false;
         }
 
@@ -63,7 +63,7 @@ class ProcurementModeController extends Controller
         }
 
         $role = $user->role;
-        if (! $role) {
+        if (!$role) {
             return false;
         }
 

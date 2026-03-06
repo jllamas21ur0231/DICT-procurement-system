@@ -46,8 +46,8 @@ const SignOutIcon = () => (
 const NAV_ITEMS = [
   { label: "Dashboard", icon: <DashboardIcon />, to: "/dashboard" },
   { label: "Procurement", icon: <ProcurementIcon />, to: "/procurement" },
-  // { label: "PPMP", icon: <PPMPIcon />, to: "/ppmp" },
-  { label: "Purchase Request", icon: <PurchaseIcon />, to: "/purchase-request" },
+  { label: "PPMP", icon: <PPMPIcon />, to: "/ppmp" },
+  //{ label: "Purchase Request", icon: <PurchaseIcon />, to: "/purchase-request" },
 ];
 
 export default function Sidebar() {

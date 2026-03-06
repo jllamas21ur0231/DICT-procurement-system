@@ -54,6 +54,11 @@ class Procurement extends Model
         return $this->hasMany(ProcurementRevision::class);
     }
 
+    public function lastRevision()
+    {
+        return $this->hasOne(ProcurementRevision::class)->latestOfMany();
+    }
+
     public function saro()
     {
         return $this->hasOne(Saro::class);

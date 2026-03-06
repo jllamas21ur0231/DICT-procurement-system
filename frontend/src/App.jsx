@@ -1,10 +1,12 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import './css/App.css';
-
+import PPMP from './pages/PPMP';
 import MainLayout from './components/MainLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import SAdminProtectedRoute from './components/SAdminProtectedRoute';
-
+import ProcurementDetails from "./pages/ProcurementDetails";
+import EditProcurement from "./pages/EditProcurement";
+import EditPurchaseRequest from "./pages/EditPurchaseRequest";
 import SignIn from './pages/SignIn';
 import Dashboard from './pages/Dashboard';
 import Procurement from './pages/Procurement';
@@ -16,7 +18,7 @@ import AddProcurement from './pages/AddProcurement';
 import VerificationFailed from './pages/VerificationFailed';
 import OTP from './pages/OTP';
 import LoadingScreen from './pages/LoadingScreen';
-
+import ViewPurchaseRequest from "./pages/ViewPurchaseRequest";
 import SAdminMainLayout from './components/sAdminMainLayout';
 import SAdminSignIn from './pages/sAdmin/sAdminSignIn';
 import SAdminOTP from './pages/sAdmin/sAdminOTP';
@@ -39,8 +41,12 @@ function App() {
       <Route path="/loading-screen" element={<LoadingScreen />} />
 
       {/* ── Protected end-user routes ────────────────────────────────────────── */}
+      <Route path="/purchase-requests/:id" element={<ProtectedRoute><MainLayout><ViewPurchaseRequest /></MainLayout></ProtectedRoute>} />
       <Route path="/dashboard" element={
         <ProtectedRoute><MainLayout><Dashboard /></MainLayout></ProtectedRoute>
+      } />
+      <Route path="/ppmp" element={
+        <ProtectedRoute><MainLayout><PPMP /></MainLayout></ProtectedRoute>
       } />
       <Route path="/procurement" element={
         <ProtectedRoute><MainLayout><Procurement /></MainLayout></ProtectedRoute>
@@ -48,6 +54,9 @@ function App() {
       <Route path="/add-procurement" element={
         <ProtectedRoute><MainLayout><AddProcurement /></MainLayout></ProtectedRoute>
       } />
+      <Route path="/procurement/:id/edit" element={<ProtectedRoute><MainLayout><EditProcurement /></MainLayout></ProtectedRoute>} />
+      <Route path="/procurement/:id/purchase-request/:prId/edit" element={<ProtectedRoute><MainLayout><EditPurchaseRequest /></MainLayout></ProtectedRoute>} />
+      <Route path="/procurement/:id" element={<ProtectedRoute><MainLayout><ProcurementDetails /></MainLayout></ProtectedRoute>} />
       <Route path="/purchase-request" element={
         <ProtectedRoute><MainLayout><PurchaseRequest /></MainLayout></ProtectedRoute>
       } />

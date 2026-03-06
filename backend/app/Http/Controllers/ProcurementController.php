@@ -25,9 +25,7 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ProcurementController extends Controller
 {
-    private const ALLOWED_STATUSES = ['pending', 'approved', 'rejected'];
 
-    public function __construct(private readonly ProcurementRevisionLogger $revisionLogger) {}
 
     public function search(Request $request): JsonResponse
     {
@@ -50,7 +48,7 @@ class ProcurementController extends Controller
             ->orderByDesc('updated_at')
             ->orderByDesc('id');
 
-        if (! $includeDeleted) {
+        if (!$includeDeleted) {
             $query->where('deleted', false);
         }
 
@@ -58,9 +56,9 @@ class ProcurementController extends Controller
             $query->where(function ($innerQuery) use ($queryText): void {
                 $innerQuery->where('procurement_no', $queryText)
                     ->orWhere('title', $queryText)
-                    ->orWhereHas('procurementMode', fn ($modeQuery) => $modeQuery->where('name', $queryText))
-                    ->orWhereHas('projectRecord', fn ($projectQuery) => $projectQuery->where('name', $queryText))
-                    ->orWhereHas('requester', fn ($requesterQuery) => $this->applyRequesterExactSearch($requesterQuery, $queryText));
+                    ->orWhereHas('procurementMode', fn($modeQuery) => $modeQuery->where('name', $queryText))
+                    ->orWhereHas('projectRecord', fn($projectQuery) => $projectQuery->where('name', $queryText))
+                    ->orWhereHas('requester', fn($requesterQuery) => $this->applyRequesterExactSearch($requesterQuery, $queryText));
             });
 
             return response()->json($this->buildPaginatedResponse($query, $perPage, $cursor, $async));
@@ -86,9 +84,9 @@ class ProcurementController extends Controller
                             $variantQuery->{$method}(function ($fieldQuery) use ($variant): void {
                                 $fieldQuery->where('procurement_no', 'like', "%{$variant}%")
                                     ->orWhere('title', 'like', "%{$variant}%")
-                                    ->orWhereHas('procurementMode', fn ($modeQuery) => $modeQuery->where('name', 'like', "%{$variant}%"))
-                                    ->orWhereHas('projectRecord', fn ($projectQuery) => $projectQuery->where('name', 'like', "%{$variant}%"))
-                                    ->orWhereHas('requester', fn ($requesterQuery) => $this->applyRequesterLikeSearch($requesterQuery, $variant));
+                                    ->orWhereHas('procurementMode', fn($modeQuery) => $modeQuery->where('name', 'like', "%{$variant}%"))
+                                    ->orWhereHas('projectRecord', fn($projectQuery) => $projectQuery->where('name', 'like', "%{$variant}%"))
+                                    ->orWhereHas('requester', fn($requesterQuery) => $this->applyRequesterLikeSearch($requesterQuery, $variant));
                             });
                         }
                     });
@@ -139,7 +137,7 @@ class ProcurementController extends Controller
             ->orderByDesc('updated_at')
             ->orderByDesc('id');
 
-        if (! $includeDeleted) {
+        if (!$includeDeleted) {
             $query->where('deleted', false);
         }
 
@@ -166,7 +164,7 @@ class ProcurementController extends Controller
             ->orderByDesc('updated_at')
             ->orderByDesc('id');
 
-        if (! $includeDeleted) {
+        if (!$includeDeleted) {
             $query->where('deleted', false);
         }
 
@@ -192,7 +190,7 @@ class ProcurementController extends Controller
             ->orderByDesc('updated_at')
             ->orderByDesc('id');
 
-        if (! $includeDeleted) {
+        if (!$includeDeleted) {
             $query->where('deleted', false);
         }
 
@@ -206,7 +204,7 @@ class ProcurementController extends Controller
 
     public function revisions(Request $request, Procurement $procurement): JsonResponse
     {
-        if (! $this->canViewRestrictedData($request, $procurement)) {
+        if (!$this->canViewRestrictedData($request, $procurement)) {
             return response()->json([
                 'message' => 'You are not allowed to view revisions for this procurement.',
             ], 403);
@@ -276,7 +274,7 @@ class ProcurementController extends Controller
 
         $procurement = DB::transaction(function () use ($request, $validated): Procurement {
             $procurement = Procurement::create([
-                'procurement_no' => 'TMP-'.Str::uuid(),
+                'procurement_no' => 'TMP-' . Str::uuid(),
                 'title' => $validated['title'],
                 'procurement_mode_id' => $validated['procurement_mode_id'],
                 'project_id' => $validated['project_id'],
@@ -336,7 +334,7 @@ class ProcurementController extends Controller
                 ]);
             }
             $purchaseRequest = $procurement->purchaseRequest()->create([
-                'purchase_request_number' => 'TMP-'.Str::uuid(),
+                'purchase_request_number' => 'TMP-' . Str::uuid(),
                 'office' => $validated['purchase_request']['office'],
                 'date_created' => $validated['purchase_request']['date_created'],
                 'responsibility_center_code' => $validated['purchase_request']['responsibility_center_code'],
@@ -391,7 +389,7 @@ class ProcurementController extends Controller
 
     public function update(Request $request, Procurement $procurement): JsonResponse
     {
-        if (! $this->canModify($request, $procurement)) {
+        if (!$this->canModify($request, $procurement)) {
             return response()->json([
                 'message' => 'You are not allowed to update this procurement.',
             ], 403);
@@ -412,7 +410,7 @@ class ProcurementController extends Controller
         $user = $request->user();
         $isBudgetOfficer = $this->isBudgetOfficer($user);
 
-        if (array_key_exists('status', $validated) && ! $isBudgetOfficer) {
+        if (array_key_exists('status', $validated) && !$isBudgetOfficer) {
             return response()->json([
                 'message' => 'Only Budget Officers can update procurement status.',
             ], 403);
@@ -431,7 +429,7 @@ class ProcurementController extends Controller
             $payload = array_filter([
                 'title' => $validated['title'] ?? null,
                 'status' => $validated['status'] ?? null,
-            ], static fn ($value): bool => $value !== null);
+            ], static fn($value): bool => $value !== null);
 
             if (array_key_exists('procurement_mode_id', $validated)) {
                 $payload['procurement_mode_id'] = $validated['procurement_mode_id'];
@@ -488,8 +486,13 @@ class ProcurementController extends Controller
                 }
             }
 
-            if (array_key_exists('status', $validated) && ! $this->sameStatus($originalStatus, $procurement->status)) {
+            if (array_key_exists('status', $validated) && !$this->sameStatus($originalStatus, $procurement->status)) {
                 $this->notifyRequesterOnStatusChange($procurement, $originalStatus);
+            }
+
+            // Notify the procurement owner when someone else edits their procurement.
+            if ($changedFields !== [] && $request->user()->id !== (int) $procurement->requested_by) {
+                $this->notifyOwnerOnEdit($procurement, $request->user(), $changedFields);
             }
         });
 
@@ -501,7 +504,7 @@ class ProcurementController extends Controller
 
     public function uploadAttachment(Request $request, Procurement $procurement): JsonResponse
     {
-        if (! $this->canModify($request, $procurement)) {
+        if (!$this->canModify($request, $procurement)) {
             return response()->json([
                 'message' => 'You are not allowed to upload attachments for this procurement.',
             ], 403);
@@ -517,7 +520,7 @@ class ProcurementController extends Controller
 
         if (is_string($checklist)) {
             $decoded = json_decode($checklist, true);
-            if (json_last_error() !== JSON_ERROR_NONE || ! is_array($decoded)) {
+            if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
                 return response()->json([
                     'message' => 'Checklist must be a valid JSON object or array.',
                 ], 422);
@@ -525,14 +528,14 @@ class ProcurementController extends Controller
             $checklist = $decoded;
         }
 
-        if (! is_array($checklist)) {
+        if (!is_array($checklist)) {
             return response()->json([
                 'message' => 'Checklist must be an array or object payload.',
             ], 422);
         }
 
         $uploadedFile = $validated['file'];
-        $storedPath = $uploadedFile->store('procurements/'.$procurement->id, 'public');
+        $storedPath = $uploadedFile->store('procurements/' . $procurement->id, 'public');
 
         $attachment = $procurement->pdfs()->create([
             'file_name' => $validated['file_name'] ?? $uploadedFile->getClientOriginalName(),
@@ -548,13 +551,13 @@ class ProcurementController extends Controller
 
     public function showAttachment(Request $request, Procurement $procurement, ProcurementPdf $attachment): JsonResponse
     {
-        if (! $this->canViewRestrictedData($request, $procurement)) {
+        if (!$this->canViewRestrictedData($request, $procurement)) {
             return response()->json([
                 'message' => 'You are not allowed to view this attachment.',
             ], 403);
         }
 
-        if (! $this->attachmentBelongsToProcurement($procurement, $attachment)) {
+        if (!$this->attachmentBelongsToProcurement($procurement, $attachment)) {
             return response()->json([
                 'message' => 'Attachment not found for this procurement.',
             ], 404);
@@ -565,19 +568,19 @@ class ProcurementController extends Controller
 
     public function downloadAttachment(Request $request, Procurement $procurement, ProcurementPdf $attachment): BinaryFileResponse|JsonResponse
     {
-        if (! $this->canViewRestrictedData($request, $procurement)) {
+        if (!$this->canViewRestrictedData($request, $procurement)) {
             return response()->json([
                 'message' => 'You are not allowed to download this attachment.',
             ], 403);
         }
 
-        if (! $this->attachmentBelongsToProcurement($procurement, $attachment)) {
+        if (!$this->attachmentBelongsToProcurement($procurement, $attachment)) {
             return response()->json([
                 'message' => 'Attachment not found for this procurement.',
             ], 404);
         }
 
-        if (! Storage::disk('public')->exists($attachment->file_path)) {
+        if (!Storage::disk('public')->exists($attachment->file_path)) {
             return response()->json([
                 'message' => 'Attachment file is missing from storage.',
             ], 404);
@@ -592,7 +595,7 @@ class ProcurementController extends Controller
 
     public function destroy(Request $request, Procurement $procurement): JsonResponse
     {
-        if (! $this->canModify($request, $procurement)) {
+        if (!$this->canModify($request, $procurement)) {
             return response()->json([
                 'message' => 'You are not allowed to delete this procurement.',
             ], 403);
@@ -618,7 +621,7 @@ class ProcurementController extends Controller
 
     public function restore(Request $request, Procurement $procurement): JsonResponse
     {
-        if (! $this->canModify($request, $procurement)) {
+        if (!$this->canModify($request, $procurement)) {
             return response()->json([
                 'message' => 'You are not allowed to restore this procurement.',
             ], 403);
@@ -658,7 +661,7 @@ class ProcurementController extends Controller
 
         $duplicated = DB::transaction(function () use ($request, $procurement): Procurement {
             $clone = Procurement::create([
-                'procurement_no' => 'TMP-'.Str::uuid(),
+                'procurement_no' => 'TMP-' . Str::uuid(),
                 'title' => $procurement->title,
                 'procurement_mode_id' => $procurement->procurement_mode_id,
                 'project_id' => $procurement->project_id,
@@ -682,7 +685,7 @@ class ProcurementController extends Controller
             $sourcePurchaseRequest = $procurement->purchaseRequest;
             if ($sourcePurchaseRequest) {
                 $purchaseRequest = $clone->purchaseRequest()->create([
-                    'purchase_request_number' => 'TMP-'.Str::uuid(),
+                    'purchase_request_number' => 'TMP-' . Str::uuid(),
                     'office' => $sourcePurchaseRequest->office,
                     'date_created' => $sourcePurchaseRequest->date_created,
                     'responsibility_center_code' => $sourcePurchaseRequest->responsibility_center_code,
@@ -828,12 +831,9 @@ class ProcurementController extends Controller
 
     private function canModify(Request $request, Procurement $procurement): bool
     {
-        $user = $request->user();
-
-        return $user && (
-            $procurement->requested_by === $user->id
-            || $this->isBudgetOfficer($user)
-        );
+        // All authenticated users can edit any procurement (title, mode, project, description, pdfs).
+        // Status changes are separately restricted to budget officers only inside update().
+        return $request->user() !== null;
     }
 
     private function canViewRestrictedData(Request $request, Procurement $procurement): bool
@@ -854,14 +854,14 @@ class ProcurementController extends Controller
 
     private function duplicateStoredFilePath(string $sourcePath, int $targetProcurementId, ?string $subFolder = null): string
     {
-        if ($sourcePath === '' || ! Storage::disk('public')->exists($sourcePath)) {
+        if ($sourcePath === '' || !Storage::disk('public')->exists($sourcePath)) {
             return $sourcePath;
         }
 
         $extension = pathinfo($sourcePath, PATHINFO_EXTENSION);
-        $targetDir = 'procurements/'.$targetProcurementId.($subFolder ? '/'.$subFolder : '');
-        $targetFileName = Str::uuid().($extension ? '.'.$extension : '');
-        $targetPath = $targetDir.'/'.$targetFileName;
+        $targetDir = 'procurements/' . $targetProcurementId . ($subFolder ? '/' . $subFolder : '');
+        $targetFileName = Str::uuid() . ($extension ? '.' . $extension : '');
+        $targetPath = $targetDir . '/' . $targetFileName;
 
         Storage::disk('public')->copy($sourcePath, $targetPath);
 
@@ -899,7 +899,7 @@ class ProcurementController extends Controller
         }
 
         $now = now();
-        $senderName = trim($actor->first_name.' '.$actor->last_name);
+        $senderName = trim($actor->first_name . ' ' . $actor->last_name);
 
         $records = $officers->map(function (User $officer) use ($procurement, $now, $senderName): array {
             return [
@@ -929,7 +929,7 @@ class ProcurementController extends Controller
     {
         $requester = $procurement->requester;
 
-        if (! $requester || ! $requester->is_active || ! $requester->is_authorized) {
+        if (!$requester || !$requester->is_active || !$requester->is_authorized) {
             return;
         }
 
@@ -1009,12 +1009,12 @@ class ProcurementController extends Controller
 
         if (array_key_exists('project', $validated) && $validated['project'] !== null && trim($validated['project']) !== '') {
             $projectName = trim((string) $validated['project']);
-            $query->whereHas('projectRecord', fn ($projectQuery) => $projectQuery->where('name', 'like', "%{$projectName}%"));
+            $query->whereHas('projectRecord', fn($projectQuery) => $projectQuery->where('name', 'like', "%{$projectName}%"));
         }
 
         if (array_key_exists('procurement_mode', $validated) && $validated['procurement_mode'] !== null && trim($validated['procurement_mode']) !== '') {
             $modeName = trim((string) $validated['procurement_mode']);
-            $query->whereHas('procurementMode', fn ($modeQuery) => $modeQuery->where('name', 'like', "%{$modeName}%"));
+            $query->whereHas('procurementMode', fn($modeQuery) => $modeQuery->where('name', 'like', "%{$modeName}%"));
         }
 
         if (array_key_exists('date_from', $validated) && $validated['date_from'] !== null) {
@@ -1067,10 +1067,13 @@ class ProcurementController extends Controller
             'srfiAttachment',
             'technicalSpecificationAttachments',
             'saro',
+            // Eager-load the single most recent revision with its actor
+            // so the frontend can show "Edited by: <name>" without a second request.
+            'lastRevision.actor',
             'purchaseRequest' => function ($purchaseRequestQuery): void {
                 $purchaseRequestQuery->where('deleted', false)
                     ->with([
-                        'items' => fn ($itemQuery) => $itemQuery->where('deleted', false),
+                        'items' => fn($itemQuery) => $itemQuery->where('deleted', false),
                     ]);
             },
         ];
@@ -1078,7 +1081,7 @@ class ProcurementController extends Controller
 
     private function isBudgetOfficer(?User $user): bool
     {
-        if (! $user) {
+        if (!$user) {
             return false;
         }
 
@@ -1088,7 +1091,7 @@ class ProcurementController extends Controller
         }
 
         $role = $user->role;
-        if (! $role) {
+        if (!$role) {
             return false;
         }
 
@@ -1104,7 +1107,7 @@ class ProcurementController extends Controller
 
     private function isSuperAdmin(?User $user): bool
     {
-        if (! $user) {
+        if (!$user) {
             return false;
         }
 
@@ -1114,7 +1117,7 @@ class ProcurementController extends Controller
         }
 
         $role = $user->role;
-        if (! $role) {
+        if (!$role) {
             return false;
         }
 
@@ -1127,6 +1130,36 @@ class ProcurementController extends Controller
 
         return str_contains($haystack, 'super admin');
     }
+    private function notifyOwnerOnEdit(Procurement $procurement, User $actor, array $changedFields): void
+    {
+        $requester = $procurement->requester;
+
+        if (!$requester || !$requester->is_active || !$requester->is_authorized) {
+            return;
+        }
+
+        $actorName = trim($actor->first_name . ' ' . $actor->last_name);
+        $actorName = $actorName !== '' ? $actorName : 'A user';
+
+        Notification::create([
+            'user_id' => $requester->id,
+            'type' => 'procurement_revised_by_other_user',
+            'title' => 'Procurement Revised',
+            'message' => sprintf(
+                '%s revised your procurement %s.',
+                $actorName,
+                $procurement->procurement_no
+            ),
+            'data' => [
+                'procurement_id' => $procurement->id,
+                'procurement_no' => $procurement->procurement_no,
+                'actor_user_id' => $actor->id,
+                'changed_fields' => $changedFields,
+                'scope' => 'procurement',
+            ],
+        ]);
+    }
+
 }
 
 

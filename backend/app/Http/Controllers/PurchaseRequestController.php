@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Item;
 use App\Models\PurchaseRequest;
-use App\Models\User;
 use App\Services\ProcurementRevisionLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -12,7 +11,9 @@ use Illuminate\Support\Facades\DB;
 
 class PurchaseRequestController extends Controller
 {
-    public function __construct(private readonly ProcurementRevisionLogger $revisionLogger) {}
+    public function __construct(private readonly ProcurementRevisionLogger $revisionLogger)
+    {
+    }
 
     public function index(Request $request): JsonResponse
     {
@@ -23,14 +24,14 @@ class PurchaseRequestController extends Controller
             ->with([
                 'procurement.requester',
                 'items' => function ($itemQuery) use ($includeDeletedItems): void {
-                    if (! $includeDeletedItems) {
+                    if (!$includeDeletedItems) {
                         $itemQuery->where('deleted', false);
                     }
                 },
             ])
             ->latest('updated_at');
 
-        if (! $includeDeleted) {
+        if (!$includeDeleted) {
             $query->where('deleted', false);
         }
 
@@ -39,21 +40,21 @@ class PurchaseRequestController extends Controller
 
     public function show(Request $request, PurchaseRequest $purchaseRequest): JsonResponse
     {
-        if (! $this->canView($request, $purchaseRequest)) {
+        if (!$this->canView($request, $purchaseRequest)) {
             return response()->json(['message' => 'You are not allowed to view this purchase request.'], 403);
         }
 
         $includeDeletedItems = filter_var($request->query('include_deleted_items', false), FILTER_VALIDATE_BOOLEAN);
         $includeDeleted = filter_var($request->query('include_deleted', false), FILTER_VALIDATE_BOOLEAN);
 
-        if ($purchaseRequest->deleted && ! $includeDeleted) {
+        if ($purchaseRequest->deleted && !$includeDeleted) {
             return response()->json(['message' => 'Purchase request not found.'], 404);
         }
 
         $purchaseRequest->load([
             'procurement.requester',
             'items' => function ($itemQuery) use ($includeDeletedItems): void {
-                if (! $includeDeletedItems) {
+                if (!$includeDeletedItems) {
                     $itemQuery->where('deleted', false);
                 }
             },
@@ -64,7 +65,7 @@ class PurchaseRequestController extends Controller
 
     public function update(Request $request, PurchaseRequest $purchaseRequest): JsonResponse
     {
-        if (! $this->canModify($request, $purchaseRequest)) {
+        if (!$this->canModify($request, $purchaseRequest)) {
             return response()->json(['message' => 'You are not allowed to update this purchase request.'], 403);
         }
 
@@ -111,14 +112,14 @@ class PurchaseRequestController extends Controller
             'message' => 'Purchase request updated successfully.',
             'purchase_request' => $purchaseRequest->load([
                 'procurement.requester',
-                'items' => fn ($itemQuery) => $itemQuery->where('deleted', false),
+                'items' => fn($itemQuery) => $itemQuery->where('deleted', false),
             ]),
         ]);
     }
 
     public function destroy(Request $request, PurchaseRequest $purchaseRequest): JsonResponse
     {
-        if (! $this->canModify($request, $purchaseRequest)) {
+        if (!$this->canModify($request, $purchaseRequest)) {
             return response()->json(['message' => 'You are not allowed to delete this purchase request.'], 403);
         }
 
@@ -145,7 +146,7 @@ class PurchaseRequestController extends Controller
 
     public function restore(Request $request, PurchaseRequest $purchaseRequest): JsonResponse
     {
-        if (! $this->canModify($request, $purchaseRequest)) {
+        if (!$this->canModify($request, $purchaseRequest)) {
             return response()->json(['message' => 'You are not allowed to restore this purchase request.'], 403);
         }
 
@@ -171,14 +172,14 @@ class PurchaseRequestController extends Controller
             'message' => 'Purchase request restored successfully.',
             'purchase_request' => $purchaseRequest->fresh()->load([
                 'procurement.requester',
-                'items' => fn ($itemQuery) => $itemQuery->where('deleted', false),
+                'items' => fn($itemQuery) => $itemQuery->where('deleted', false),
             ]),
         ]);
     }
 
     public function storeItem(Request $request, PurchaseRequest $purchaseRequest): JsonResponse
     {
-        if (! $this->canModify($request, $purchaseRequest)) {
+        if (!$this->canModify($request, $purchaseRequest)) {
             return response()->json(['message' => 'You are not allowed to add items to this purchase request.'], 403);
         }
 
@@ -227,11 +228,11 @@ class PurchaseRequestController extends Controller
 
     public function updateItem(Request $request, PurchaseRequest $purchaseRequest, Item $item): JsonResponse
     {
-        if (! $this->itemBelongsToPurchaseRequest($purchaseRequest, $item)) {
+        if (!$this->itemBelongsToPurchaseRequest($purchaseRequest, $item)) {
             return response()->json(['message' => 'Item not found for this purchase request.'], 404);
         }
 
-        if (! $this->canModify($request, $purchaseRequest)) {
+        if (!$this->canModify($request, $purchaseRequest)) {
             return response()->json(['message' => 'You are not allowed to update this item.'], 403);
         }
 
@@ -289,11 +290,11 @@ class PurchaseRequestController extends Controller
 
     public function destroyItem(Request $request, PurchaseRequest $purchaseRequest, Item $item): JsonResponse
     {
-        if (! $this->itemBelongsToPurchaseRequest($purchaseRequest, $item)) {
+        if (!$this->itemBelongsToPurchaseRequest($purchaseRequest, $item)) {
             return response()->json(['message' => 'Item not found for this purchase request.'], 404);
         }
 
-        if (! $this->canModify($request, $purchaseRequest)) {
+        if (!$this->canModify($request, $purchaseRequest)) {
             return response()->json(['message' => 'You are not allowed to delete this item.'], 403);
         }
 
@@ -317,11 +318,11 @@ class PurchaseRequestController extends Controller
 
     public function restoreItem(Request $request, PurchaseRequest $purchaseRequest, Item $item): JsonResponse
     {
-        if (! $this->itemBelongsToPurchaseRequest($purchaseRequest, $item)) {
+        if (!$this->itemBelongsToPurchaseRequest($purchaseRequest, $item)) {
             return response()->json(['message' => 'Item not found for this purchase request.'], 404);
         }
 
-        if (! $this->canModify($request, $purchaseRequest)) {
+        if (!$this->canModify($request, $purchaseRequest)) {
             return response()->json(['message' => 'You are not allowed to restore this item.'], 403);
         }
 
@@ -359,76 +360,15 @@ class PurchaseRequestController extends Controller
 
     private function canModify(Request $request, PurchaseRequest $purchaseRequest): bool
     {
-        $user = $request->user();
-        $procurement = $purchaseRequest->procurement;
-
-        return $user && $procurement && (
-            (int) $procurement->requested_by === (int) $user->id
-            || $this->isBudgetOfficer($user)
-        );
+        // All authenticated users can edit purchase requests and their items.
+        // Status changes on the parent procurement are restricted to budget officers only.
+        return $request->user() !== null;
     }
 
     private function canView(Request $request, PurchaseRequest $purchaseRequest): bool
     {
-        $user = $request->user();
-        $procurement = $purchaseRequest->procurement;
-
-        return $user && $procurement && (
-            (int) $procurement->requested_by === (int) $user->id
-            || $this->isBudgetOfficer($user)
-            || $this->isSuperAdmin($user)
-        );
+        // All authenticated users can view any purchase request.
+        return $request->user() !== null;
     }
 
-    private function isBudgetOfficer(?User $user): bool
-    {
-        if (! $user) {
-            return false;
-        }
-
-        $accessType = strtolower(trim((string) $user->access_type));
-        if (in_array($accessType, ['budget_officer', 'budget officer', 'budget'], true)) {
-            return true;
-        }
-
-        $role = $user->role;
-        if (! $role) {
-            return false;
-        }
-
-        $haystack = strtolower(trim(implode(' ', [
-            (string) $role->role_type,
-            (string) $role->position,
-            (string) $role->designation,
-            (string) $role->role,
-        ])));
-
-        return str_contains($haystack, 'budget officer');
-    }
-
-    private function isSuperAdmin(?User $user): bool
-    {
-        if (! $user) {
-            return false;
-        }
-
-        $accessType = strtolower(trim((string) $user->access_type));
-        if (in_array($accessType, ['super_admin', 'super admin', 'superadmin'], true)) {
-            return true;
-        }
-
-        $role = $user->role;
-        if (! $role) {
-            return false;
-        }
-
-        $haystack = strtolower(trim(implode(' ', [
-            (string) $role->role_type,
-            (string) $role->position,
-            (string) $role->designation,
-            (string) $role->role,
-        ])));
-
-        return str_contains($haystack, 'super admin');
-    }
 }

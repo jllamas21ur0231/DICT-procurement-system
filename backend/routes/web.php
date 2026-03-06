@@ -20,16 +20,38 @@ use App\Http\Controllers\TechnicalSpecificationAttachmentController;
 use Illuminate\Support\Facades\Route;
 
 
+Route::get('/download/template/{filename}', function ($filename) {
+    // Whitelist allowed files â€” never let users pass arbitrary filenames
+    $allowed = [
+        'NGPA_PPMP.pdf',
+        'SRFI.pdf',
+    ];
+
+    if (!in_array($filename, $allowed)) {
+        abort(404);
+    }
+
+    $path = public_path('templates/' . $filename);
+
+    if (!file_exists($path)) {
+        abort(404, 'File not found.');
+    }
+
+    return response()->download($path, $filename, [
+        'Content-Type' => 'application/pdf',
+        'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+    ]);
+})->name('download.template');
 Route::get('/', function () {
     return view('welcome');
 });
-    //otp login routes
+//otp login routes
 Route::middleware('guest')->prefix('auth')->group(function (): void {
     Route::post('/request-otp', [AuthController::class, 'requestOtp']);
     Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
     Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
 });
-    // auth routes
+// auth routes
 Route::middleware(['auth', 'active.device'])->group(function (): void {
     Route::prefix('auth')->group(function (): void {
         Route::get('/me', [AuthController::class, 'me']);
@@ -161,24 +183,24 @@ Route::prefix('sadmin')->group(function (): void {
 
     // -- Open: OTP auth (no session required) ----------------------------------
     Route::post('/request-otp', [SAdminController::class, 'requestSAdminOtp']);
-    Route::post('/verify-otp',  [SAdminController::class, 'verifySAdminOtp']);
-    Route::post('/resend-otp',  [SAdminController::class, 'resendSAdminOtp']);
+    Route::post('/verify-otp', [SAdminController::class, 'verifySAdminOtp']);
+    Route::post('/resend-otp', [SAdminController::class, 'resendSAdminOtp']);
 
     // -- Protected: require a valid sAdmin session ------------------------------
     Route::middleware('active.sadmin')->group(function (): void {
-        Route::get('/me',                                      [SAdminController::class,       'me']);
-        Route::post('/logout',                                 [SAdminController::class,       'logoutSAdmin']);
-        Route::get('/procurements',                            [SAdminController::class,       'procurements']);
-        Route::post('/procurements',                           [SAdminController::class,       'storeProcurement']);
-        Route::post('/procurements/{procurement}/attachments', [SAdminController::class,       'uploadProcurementAttachment']);
-        Route::get('/users',                                   [SAdminController::class,       'users']);
-        Route::delete('/users/{id}',                           [SAdminController::class,       'deleteUser']);
-        // Reference data — readable by sAdmin
-        Route::get('/projects',                                [ProjectController::class,      'index']);
-        Route::post('/projects',                               [SAdminController::class,       'storeProject']);
-        Route::get('/procurement-modes',                       [ProcurementModeController::class, 'index']);
-        Route::post('/procurement-modes',                      [SAdminController::class,       'storeProcurementMode']);
-        Route::get('/purchase-requests',                       [SAdminController::class,       'purchaseRequests']);
+        Route::get('/me', [SAdminController::class, 'me']);
+        Route::post('/logout', [SAdminController::class, 'logoutSAdmin']);
+        Route::get('/procurements', [SAdminController::class, 'procurements']);
+        Route::post('/procurements', [SAdminController::class, 'storeProcurement']);
+        Route::post('/procurements/{procurement}/attachments', [SAdminController::class, 'uploadProcurementAttachment']);
+        Route::get('/users', [SAdminController::class, 'users']);
+        Route::delete('/users/{id}', [SAdminController::class, 'deleteUser']);
+        // Reference data ï¿½ readable by sAdmin
+        Route::get('/projects', [ProjectController::class, 'index']);
+        Route::post('/projects', [SAdminController::class, 'storeProject']);
+        Route::get('/procurement-modes', [ProcurementModeController::class, 'index']);
+        Route::post('/procurement-modes', [SAdminController::class, 'storeProcurementMode']);
+        Route::get('/purchase-requests', [SAdminController::class, 'purchaseRequests']);
     });
 });
 
