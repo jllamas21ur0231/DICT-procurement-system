@@ -299,6 +299,7 @@ class ProcurementController extends Controller
                     'mime_type' => $validated['app']['mime_type'],
                     'file_size' => $validated['app']['file_size'],
                     'remarks' => $validated['app']['remarks'] ?? null,
+                    'deleted' => false,
                 ]);
             }
 
@@ -311,6 +312,7 @@ class ProcurementController extends Controller
                     'mime_type' => $validated['ppmp']['mime_type'],
                     'file_size' => $validated['ppmp']['file_size'],
                     'remarks' => $validated['ppmp']['remarks'] ?? null,
+                    'deleted' => false,
                 ]);
             }
             if (isset($validated['msri'])) {
@@ -322,6 +324,7 @@ class ProcurementController extends Controller
                     'mime_type' => $validated['msri']['mime_type'],
                     'file_size' => $validated['msri']['file_size'],
                     'remarks' => $validated['msri']['remarks'] ?? null,
+                    'deleted' => false,
                 ]);
             }
 
@@ -334,6 +337,7 @@ class ProcurementController extends Controller
                     'mime_type' => $validated['srfi']['mime_type'],
                     'file_size' => $validated['srfi']['file_size'],
                     'remarks' => $validated['srfi']['remarks'] ?? null,
+                    'deleted' => false,
                 ]);
             }
             $purchaseRequest = $procurement->purchaseRequest()->create([
@@ -606,18 +610,34 @@ class ProcurementController extends Controller
             ], 403);
         }
 
-        $before = ['deleted' => $procurement->deleted];
-        $procurement->update(['deleted' => true]);
-        $this->revisionLogger->log(
-            $request,
-            $procurement,
-            'procurement_deleted',
-            'procurement',
-            (int) $procurement->id,
-            $before,
-            ['deleted' => true],
-            ['deleted']
-        );
+        DB::transaction(function () use ($request, $procurement): void {
+            $before = ['deleted' => $procurement->deleted];
+            $procurement->update(['deleted' => true]);
+
+            $purchaseRequest = $procurement->purchaseRequest;
+            if ($purchaseRequest) {
+                $purchaseRequest->update(['deleted' => true]);
+                $purchaseRequest->items()->update(['deleted' => true]);
+            }
+
+            AppAttachment::where('procurement_id', $procurement->id)->update(['deleted' => true]);
+            PpmpAttachment::where('procurement_id', $procurement->id)->update(['deleted' => true]);
+            MsriAttachment::where('procurement_id', $procurement->id)->update(['deleted' => true]);
+            SrfiAttachment::where('procurement_id', $procurement->id)->update(['deleted' => true]);
+            Saro::where('procurement_id', $procurement->id)->update(['deleted' => true]);
+            TechnicalSpecificationAttachment::where('procurement_id', $procurement->id)->update(['deleted' => true]);
+
+            $this->revisionLogger->log(
+                $request,
+                $procurement,
+                'procurement_deleted',
+                'procurement',
+                (int) $procurement->id,
+                $before,
+                ['deleted' => true],
+                ['deleted']
+            );
+        });
 
         return response()->json([
             'message' => 'Procurement marked as deleted.',
@@ -632,18 +652,34 @@ class ProcurementController extends Controller
             ], 403);
         }
 
-        $before = ['deleted' => $procurement->deleted];
-        $procurement->update(['deleted' => false]);
-        $this->revisionLogger->log(
-            $request,
-            $procurement,
-            'procurement_restored',
-            'procurement',
-            (int) $procurement->id,
-            $before,
-            ['deleted' => false],
-            ['deleted']
-        );
+        DB::transaction(function () use ($request, $procurement): void {
+            $before = ['deleted' => $procurement->deleted];
+            $procurement->update(['deleted' => false]);
+
+            $purchaseRequest = $procurement->purchaseRequest;
+            if ($purchaseRequest) {
+                $purchaseRequest->update(['deleted' => false]);
+                $purchaseRequest->items()->update(['deleted' => false]);
+            }
+
+            AppAttachment::where('procurement_id', $procurement->id)->update(['deleted' => false]);
+            PpmpAttachment::where('procurement_id', $procurement->id)->update(['deleted' => false]);
+            MsriAttachment::where('procurement_id', $procurement->id)->update(['deleted' => false]);
+            SrfiAttachment::where('procurement_id', $procurement->id)->update(['deleted' => false]);
+            Saro::where('procurement_id', $procurement->id)->update(['deleted' => false]);
+            TechnicalSpecificationAttachment::where('procurement_id', $procurement->id)->update(['deleted' => false]);
+
+            $this->revisionLogger->log(
+                $request,
+                $procurement,
+                'procurement_restored',
+                'procurement',
+                (int) $procurement->id,
+                $before,
+                ['deleted' => false],
+                ['deleted']
+            );
+        });
 
         return response()->json([
             'message' => 'Procurement restored successfully.',
@@ -725,6 +761,7 @@ class ProcurementController extends Controller
                     'mime_type' => $sourceApp->mime_type,
                     'file_size' => $sourceApp->file_size,
                     'remarks' => $sourceApp->remarks,
+                    'deleted' => false,
                 ]);
             }
 
@@ -738,6 +775,7 @@ class ProcurementController extends Controller
                     'mime_type' => $sourcePpmp->mime_type,
                     'file_size' => $sourcePpmp->file_size,
                     'remarks' => $sourcePpmp->remarks,
+                    'deleted' => false,
                 ]);
             }
 
@@ -751,6 +789,7 @@ class ProcurementController extends Controller
                     'mime_type' => $sourceMsri->mime_type,
                     'file_size' => $sourceMsri->file_size,
                     'remarks' => $sourceMsri->remarks,
+                    'deleted' => false,
                 ]);
             }
 
@@ -764,6 +803,7 @@ class ProcurementController extends Controller
                     'mime_type' => $sourceSrfi->mime_type,
                     'file_size' => $sourceSrfi->file_size,
                     'remarks' => $sourceSrfi->remarks,
+                    'deleted' => false,
                 ]);
             }
             if ($procurement->saro) {
@@ -776,6 +816,7 @@ class ProcurementController extends Controller
                     'mime_type' => $sourceSaro->mime_type,
                     'file_size' => $sourceSaro->file_size,
                     'remarks' => $sourceSaro->remarks,
+                    'deleted' => false,
                 ]);
             }
 
@@ -791,6 +832,7 @@ class ProcurementController extends Controller
                     'file_size' => $sourceTechnicalSpecification->file_size,
                     'remarks' => $sourceTechnicalSpecification->remarks,
                     'sort_order' => $sourceTechnicalSpecification->sort_order,
+                    'deleted' => false,
                 ]);
             }
 
@@ -1040,8 +1082,6 @@ class ProcurementController extends Controller
         return str_contains($haystack, 'super admin');
     }
 }
-
-
 
 
 

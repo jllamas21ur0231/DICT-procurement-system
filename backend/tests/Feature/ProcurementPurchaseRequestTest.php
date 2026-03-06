@@ -3,9 +3,14 @@
 namespace Tests\Feature;
 
 use App\Http\Middleware\EnsureActiveDeviceSession;
+use App\Models\AppAttachment;
+use App\Models\MsriAttachment;
+use App\Models\PpmpAttachment;
 use App\Models\ProcurementMode;
 use App\Models\Project;
 use App\Models\Saro;
+use App\Models\SrfiAttachment;
+use App\Models\TechnicalSpecificationAttachment;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
@@ -216,6 +221,177 @@ class ProcurementPurchaseRequestTest extends TestCase
             'id' => $itemId,
             'deleted' => false,
         ]);
+    }
+
+    public function test_procurement_destroy_and_restore_cascade_to_purchase_request_and_items(): void
+    {
+        $user = User::factory()->create();
+        $project = Project::firstOrCreate(['name' => 'Procurement Cascade Project'], ['is_active' => true]);
+        $mode = ProcurementMode::firstOrCreate(['name' => 'Public Bidding'], ['legal_basis' => 'RA 12009', 'is_active' => true]);
+
+        $createResponse = $this->withoutMiddleware(EnsureActiveDeviceSession::class)
+            ->actingAs($user)
+            ->postJson('/procurements', [
+                'title' => 'Cascade Delete Procurement',
+                'procurement_mode_id' => $mode->id,
+                'project_id' => $project->id,
+                'purchase_request' => [
+                    'office' => 'BAC Office',
+                    'date_created' => '2026-03-06',
+                    'responsibility_center_code' => 'RCC-CASCADE',
+                    'purpose' => 'Cascade soft delete validation',
+                    'items' => [
+                        [
+                            'item_no' => '1',
+                            'stock_no' => 'STK-CAS-1',
+                            'unit' => 'pcs',
+                            'item_description' => 'Cascade Item One',
+                            'item_inclusions' => null,
+                            'quantity' => 2,
+                            'unit_cost' => 1500.00,
+                        ],
+                        [
+                            'item_no' => '2',
+                            'stock_no' => 'STK-CAS-2',
+                            'unit' => 'set',
+                            'item_description' => 'Cascade Item Two',
+                            'item_inclusions' => 'Complete set',
+                            'quantity' => 1,
+                            'unit_cost' => 9999.99,
+                        ],
+                    ],
+                ],
+            ])
+            ->assertCreated();
+
+        $procurementId = (int) $createResponse->json('procurement.id');
+        $purchaseRequestId = (int) $createResponse->json('procurement.purchase_request.id');
+        $itemOneId = (int) $createResponse->json('procurement.purchase_request.items.0.id');
+        $itemTwoId = (int) $createResponse->json('procurement.purchase_request.items.1.id');
+
+        AppAttachment::create([
+            'procurement_id' => $procurementId,
+            'uploaded_by' => $user->id,
+            'file_name' => 'app.pdf',
+            'file_path' => 'procurements/'.$procurementId.'/app/app.pdf',
+            'mime_type' => 'application/pdf',
+            'file_size' => 123,
+            'remarks' => 'APP',
+            'deleted' => false,
+        ]);
+        PpmpAttachment::create([
+            'procurement_id' => $procurementId,
+            'uploaded_by' => $user->id,
+            'file_name' => 'ppmp.pdf',
+            'file_path' => 'procurements/'.$procurementId.'/ppmp/ppmp.pdf',
+            'mime_type' => 'application/pdf',
+            'file_size' => 124,
+            'remarks' => 'PPMP',
+            'deleted' => false,
+        ]);
+        MsriAttachment::create([
+            'procurement_id' => $procurementId,
+            'uploaded_by' => $user->id,
+            'file_name' => 'msri.pdf',
+            'file_path' => 'procurements/'.$procurementId.'/msri/msri.pdf',
+            'mime_type' => 'application/pdf',
+            'file_size' => 125,
+            'remarks' => 'MSRI',
+            'deleted' => false,
+        ]);
+        SrfiAttachment::create([
+            'procurement_id' => $procurementId,
+            'uploaded_by' => $user->id,
+            'file_name' => 'srfi.pdf',
+            'file_path' => 'procurements/'.$procurementId.'/srfi/srfi.pdf',
+            'mime_type' => 'application/pdf',
+            'file_size' => 126,
+            'remarks' => 'SRFI',
+            'deleted' => false,
+        ]);
+        Saro::create([
+            'procurement_id' => $procurementId,
+            'uploaded_by' => $user->id,
+            'file_name' => 'saro.pdf',
+            'file_path' => 'procurements/'.$procurementId.'/saro/saro.pdf',
+            'mime_type' => 'application/pdf',
+            'file_size' => 127,
+            'remarks' => 'SARO',
+            'deleted' => false,
+        ]);
+        $technicalSpecification = TechnicalSpecificationAttachment::create([
+            'procurement_id' => $procurementId,
+            'uploaded_by' => $user->id,
+            'spec_type' => 'minimum',
+            'label' => 'TS-1',
+            'file_name' => 'ts.pdf',
+            'file_path' => 'procurements/'.$procurementId.'/technical-specifications/ts.pdf',
+            'mime_type' => 'application/pdf',
+            'file_size' => 128,
+            'remarks' => 'Technical Specification',
+            'sort_order' => 1,
+            'deleted' => false,
+        ]);
+
+        $this->withoutMiddleware(EnsureActiveDeviceSession::class)
+            ->actingAs($user)
+            ->deleteJson('/procurements/'.$procurementId)
+            ->assertOk()
+            ->assertJsonPath('message', 'Procurement marked as deleted.');
+
+        $this->assertDatabaseHas('procurements', [
+            'id' => $procurementId,
+            'deleted' => true,
+        ]);
+        $this->assertDatabaseHas('purchase_requests', [
+            'id' => $purchaseRequestId,
+            'deleted' => true,
+        ]);
+        $this->assertDatabaseHas('items', [
+            'id' => $itemOneId,
+            'deleted' => true,
+        ]);
+        $this->assertDatabaseHas('items', [
+            'id' => $itemTwoId,
+            'deleted' => true,
+        ]);
+        $this->assertDatabaseHas('apps', ['procurement_id' => $procurementId, 'deleted' => true]);
+        $this->assertDatabaseHas('ppmps', ['procurement_id' => $procurementId, 'deleted' => true]);
+        $this->assertDatabaseHas('msris', ['procurement_id' => $procurementId, 'deleted' => true]);
+        $this->assertDatabaseHas('srfis', ['procurement_id' => $procurementId, 'deleted' => true]);
+        $this->assertDatabaseHas('saros', ['procurement_id' => $procurementId, 'deleted' => true]);
+        $this->assertDatabaseHas('technical_specifications', ['id' => $technicalSpecification->id, 'deleted' => true]);
+
+        $this->withoutMiddleware(EnsureActiveDeviceSession::class)
+            ->actingAs($user)
+            ->patchJson('/procurements/'.$procurementId.'/restore')
+            ->assertOk()
+            ->assertJsonPath('message', 'Procurement restored successfully.')
+            ->assertJsonPath('procurement.purchase_request.id', $purchaseRequestId)
+            ->assertJsonCount(2, 'procurement.purchase_request.items');
+
+        $this->assertDatabaseHas('procurements', [
+            'id' => $procurementId,
+            'deleted' => false,
+        ]);
+        $this->assertDatabaseHas('purchase_requests', [
+            'id' => $purchaseRequestId,
+            'deleted' => false,
+        ]);
+        $this->assertDatabaseHas('items', [
+            'id' => $itemOneId,
+            'deleted' => false,
+        ]);
+        $this->assertDatabaseHas('items', [
+            'id' => $itemTwoId,
+            'deleted' => false,
+        ]);
+        $this->assertDatabaseHas('apps', ['procurement_id' => $procurementId, 'deleted' => false]);
+        $this->assertDatabaseHas('ppmps', ['procurement_id' => $procurementId, 'deleted' => false]);
+        $this->assertDatabaseHas('msris', ['procurement_id' => $procurementId, 'deleted' => false]);
+        $this->assertDatabaseHas('srfis', ['procurement_id' => $procurementId, 'deleted' => false]);
+        $this->assertDatabaseHas('saros', ['procurement_id' => $procurementId, 'deleted' => false]);
+        $this->assertDatabaseHas('technical_specifications', ['id' => $technicalSpecification->id, 'deleted' => false]);
     }
 
     public function test_it_duplicates_procurement_and_related_records_with_new_procurement_number(): void

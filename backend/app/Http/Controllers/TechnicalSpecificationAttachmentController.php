@@ -58,6 +58,7 @@ class TechnicalSpecificationAttachmentController extends Controller
                 'file_size' => $uploadedFile->getSize() ?: 0,
                 'remarks' => $validated['remarks'] ?? null,
                 'sort_order' => $validated['sort_order'] ?? null,
+                'deleted' => false,
             ]);
 
             $afterData = $technicalSpecification->only([
@@ -322,7 +323,8 @@ class TechnicalSpecificationAttachmentController extends Controller
 
     private function belongsToProcurement(Procurement $procurement, TechnicalSpecificationAttachment $technicalSpecification): bool
     {
-        return (int) $technicalSpecification->procurement_id === (int) $procurement->id;
+        return (int) $technicalSpecification->procurement_id === (int) $procurement->id
+            && ! (bool) $technicalSpecification->deleted;
     }
 
     private function sanitizeFileName(string $originalName, string $fallbackExtension, string $prefix): string

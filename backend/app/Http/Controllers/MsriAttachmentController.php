@@ -63,6 +63,7 @@ class MsriAttachmentController extends Controller
                     'mime_type' => $uploadedFile->getClientMimeType() ?: 'application/pdf',
                     'file_size' => $uploadedFile->getSize() ?: 0,
                     'remarks' => $validated['remarks'] ?? null,
+                    'deleted' => false,
                 ]
             );
 
@@ -311,4 +312,3 @@ class MsriAttachmentController extends Controller
         return str_contains($haystack, 'super admin');
     }
 }
-
