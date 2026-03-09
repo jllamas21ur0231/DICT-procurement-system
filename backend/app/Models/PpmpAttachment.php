@@ -16,10 +16,12 @@ class PpmpAttachment extends Model
         'mime_type',
         'file_size',
         'remarks',
+        'deleted',
     ];
 
     protected $casts = [
         'file_size' => 'integer',
+        'deleted' => 'boolean',
     ];
 
     public function procurement()

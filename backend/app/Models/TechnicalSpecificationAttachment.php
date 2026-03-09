@@ -19,11 +19,13 @@ class TechnicalSpecificationAttachment extends Model
         'file_size',
         'remarks',
         'sort_order',
+        'deleted',
     ];
 
     protected $casts = [
         'file_size' => 'integer',
         'sort_order' => 'integer',
+        'deleted' => 'boolean',
     ];
 
     public function procurement()

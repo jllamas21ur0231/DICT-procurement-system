@@ -116,4 +116,42 @@ class ProcurementRevisionTest extends TestCase
             ->assertOk()
             ->assertJsonFragment(['action' => 'procurement_created']);
     }
+
+    public function test_it_notifies_requester_when_other_user_revises_procurement(): void
+    {
+        $requester = User::factory()->create(['access_type' => 'user']);
+        $budgetOfficer = User::factory()->create(['access_type' => 'budget_officer']);
+        $project = Project::firstOrCreate(['name' => 'Revision Notification Project'], ['is_active' => true]);
+        $mode = ProcurementMode::firstOrCreate(['name' => 'Shopping'], ['legal_basis' => 'RA 12009', 'is_active' => true]);
+
+        $createResponse = $this->withoutMiddleware(EnsureActiveDeviceSession::class)
+            ->actingAs($requester)
+            ->postJson('/procurements', [
+                'title' => 'Notif Trigger Procurement',
+                'procurement_mode_id' => $mode->id,
+                'project_id' => $project->id,
+                'purchase_request' => [
+                    'office' => 'Admin Office',
+                    'date_created' => now()->toDateString(),
+                    'responsibility_center_code' => 'RCC-REV-NOTIF',
+                    'purpose' => 'Trigger revised-by-other-user notification',
+                    'items' => [],
+                ],
+            ])->assertCreated();
+
+        $procurementId = (int) $createResponse->json('procurement.id');
+
+        $this->withoutMiddleware(EnsureActiveDeviceSession::class)
+            ->actingAs($budgetOfficer)
+            ->putJson('/procurements/'.$procurementId, [
+                'title' => 'Updated By Budget Officer',
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $requester->id,
+            'type' => 'procurement_revised_by_other_user',
+            'title' => 'Procurement Revised',
+        ]);
+    }
 }

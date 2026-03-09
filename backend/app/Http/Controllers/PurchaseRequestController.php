@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Item;
 use App\Models\PurchaseRequest;
+use App\Models\User;
+use App\Services\NotificationWorkflowService;
 use App\Services\ProcurementRevisionLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,6 +13,11 @@ use Illuminate\Support\Facades\DB;
 
 class PurchaseRequestController extends Controller
 {
+    public function __construct(
+        private readonly ProcurementRevisionLogger $revisionLogger,
+        private readonly NotificationWorkflowService $notificationWorkflow
+    ) {}
+  
     public function __construct(private readonly ProcurementRevisionLogger $revisionLogger)
     {
     }
@@ -104,6 +111,12 @@ class PurchaseRequestController extends Controller
                 (int) $purchaseRequest->id,
                 $beforeDiff,
                 $afterDiff,
+                $changedFields
+            );
+            $this->notificationWorkflow->procurementRevisedByOther(
+                $purchaseRequest->procurement,
+                $request->user(),
+                'purchase_request',
                 $changedFields
             );
         }
@@ -218,6 +231,12 @@ class PurchaseRequestController extends Controller
                 ]),
                 ['item_no', 'stock_no', 'unit', 'item_description', 'item_inclusions', 'quantity', 'unit_cost', 'deleted']
             );
+            $this->notificationWorkflow->procurementRevisedByOther(
+                $purchaseRequest->procurement,
+                $request->user(),
+                'item',
+                ['item_created']
+            );
         }
 
         return response()->json([
@@ -280,6 +299,12 @@ class PurchaseRequestController extends Controller
                 $afterDiff,
                 $changedFields
             );
+            $this->notificationWorkflow->procurementRevisedByOther(
+                $purchaseRequest->procurement,
+                $request->user(),
+                'item',
+                $changedFields
+            );
         }
 
         return response()->json([
@@ -309,6 +334,12 @@ class PurchaseRequestController extends Controller
                 (int) $item->id,
                 $before,
                 ['deleted' => true],
+                ['deleted']
+            );
+            $this->notificationWorkflow->procurementRevisedByOther(
+                $purchaseRequest->procurement,
+                $request->user(),
+                'item',
                 ['deleted']
             );
         }
@@ -345,6 +376,12 @@ class PurchaseRequestController extends Controller
                 ['deleted' => false],
                 ['deleted']
             );
+            $this->notificationWorkflow->procurementRevisedByOther(
+                $purchaseRequest->procurement,
+                $request->user(),
+                'item',
+                ['deleted']
+            );
         }
 
         return response()->json([
@@ -369,6 +406,32 @@ class PurchaseRequestController extends Controller
     {
         // All authenticated users can view any purchase request.
         return $request->user() !== null;
+    }
+
+    private function isSuperAdmin(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        $accessType = strtolower(trim((string) $user->access_type));
+        if (in_array($accessType, ['super_admin', 'super admin', 'superadmin'], true)) {
+            return true;
+        }
+
+        $role = $user->role;
+        if (! $role) {
+            return false;
+        }
+
+        $haystack = strtolower(trim(implode(' ', [
+            (string) $role->role_type,
+            (string) $role->position,
+            (string) $role->designation,
+            (string) $role->role,
+        ])));
+
+        return str_contains($haystack, 'super admin');
     }
 
 }
