@@ -25,7 +25,11 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class ProcurementController extends Controller
 {
+    public const ALLOWED_STATUSES = ['pending', 'approved', 'rejected'];
 
+    public function __construct(
+        private readonly ProcurementRevisionLogger $revisionLogger
+    ) {}
 
     public function search(Request $request): JsonResponse
     {

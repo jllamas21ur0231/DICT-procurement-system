@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\OtpMail;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -65,18 +66,22 @@ class AuthController extends Controller
 
         $otp = random_int(100000, 999999);
 
+        $expiresInMinutes = 5;
+
         DB::table('login_otps')->insert([
-            'email' => $email,
-            'otp_hash' => Hash::make((string) $otp),
-            'expires_at' => now()->addMinutes(5),
-            'attempts' => 0,
+            'email'      => $email,
+            'otp_hash'   => Hash::make((string) $otp),
+            'expires_at' => now()->addMinutes($expiresInMinutes),
+            'attempts'   => 0,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
-        Mail::raw("Your OTP is: {$otp}", function ($message) use ($email): void {
-            $message->to($email)->subject('Your Login OTP');
-        });
+        Mail::to($email)->send(new OtpMail(
+            otp: (string) $otp,
+            name: trim($user->first_name . ' ' . $user->last_name) ?: 'User',
+            expiresInMinutes: $expiresInMinutes,
+        ));
 
         return response()->json([
             'message' => 'OTP sent successfully.',
