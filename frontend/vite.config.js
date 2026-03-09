@@ -21,6 +21,12 @@ export default defineConfig({
   ],
   server: {
     proxy: {
+      // Forward all /sadmin/* requests to Laravel (covers every sAdmin API route)
+      '^/sadmin/(?!signin|otp|dashboard).*': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+      },
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,
@@ -46,7 +52,15 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      '/purchase-requests': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+      },
     },
+
+
+
   },
   resolve: {
     alias: {

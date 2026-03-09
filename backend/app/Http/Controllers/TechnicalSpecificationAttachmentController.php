@@ -325,6 +325,7 @@ class TechnicalSpecificationAttachmentController extends Controller
     {
         return (int) $technicalSpecification->procurement_id === (int) $procurement->id
             && ! (bool) $technicalSpecification->deleted;
+        return (int) $technicalSpecification->procurement_id === (int) $procurement->id;
     }
 
     private function sanitizeFileName(string $originalName, string $fallbackExtension, string $prefix): string

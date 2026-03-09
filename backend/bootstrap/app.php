@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureActiveDeviceSession;
+use App\Http\Middleware\EnsureActiveSAdminSession;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -15,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'active.device' => EnsureActiveDeviceSession::class,
+            'active.sadmin' => EnsureActiveSAdminSession::class,
         ]);
 
         
@@ -31,17 +33,22 @@ return Application::configure(basePath: dirname(__DIR__))
             'items/*',
             'notifications',
             'notifications/*',
-            'super-admin/accounts',
-            'super-admin/accounts/*',
-            'super-admin/data',
-            'super-admin/data/*',
+            'sadmin/accounts',
+            'sadmin/accounts/*',
+            'sadmin/data',
+            'sadmin/data/*',
             'admin/accounts',
             'admin/accounts/*',
             'admin/projects',
             'admin/projects/*',
             'admin/procurement-modes',
             'admin/procurement-modes/*',
+            'sadmin/request-otp',
+            'sadmin/verify-otp',
+            'sadmin/resend-otp',
+            'sadmin/logout',
         ]);
+
 
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -54,6 +54,11 @@ class Procurement extends Model
         return $this->hasMany(ProcurementRevision::class);
     }
 
+    public function lastRevision()
+    {
+        return $this->hasOne(ProcurementRevision::class)->latestOfMany();
+    }
+
     public function saro()
     {
         return $this->hasOne(Saro::class)->where('deleted', false);
@@ -82,6 +87,31 @@ class Procurement extends Model
     public function technicalSpecificationAttachments()
     {
         return $this->hasMany(TechnicalSpecificationAttachment::class, 'procurement_id')->where('deleted', false);
+    }
+
+    public function appAttachment()
+    {
+        return $this->hasOne(AppAttachment::class, 'procurement_id');
+    }
+
+    public function ppmpAttachment()
+    {
+        return $this->hasOne(PpmpAttachment::class, 'procurement_id');
+    }
+
+    public function msriAttachment()
+    {
+        return $this->hasOne(MsriAttachment::class, 'procurement_id');
+    }
+
+    public function srfiAttachment()
+    {
+        return $this->hasOne(SrfiAttachment::class, 'procurement_id');
+    }
+
+    public function technicalSpecificationAttachments()
+    {
+        return $this->hasMany(TechnicalSpecificationAttachment::class, 'procurement_id');
     }
 }
 

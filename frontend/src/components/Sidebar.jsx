@@ -1,53 +1,53 @@
 import { useState } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
-import Signout from "../pages/Signout"; 
+import Signout from "../pages/Signout";
 import pinasLogo from "./images/pinas.png";
 
 const DashboardIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="3" y="3" width="7" height="7"/>
-    <rect x="14" y="3" width="7" height="7"/>
-    <rect x="14" y="14" width="7" height="7"/>
-    <rect x="3" y="14" width="7" height="7"/>
+    <rect x="3" y="3" width="7" height="7" />
+    <rect x="14" y="3" width="7" height="7" />
+    <rect x="14" y="14" width="7" height="7" />
+    <rect x="3" y="14" width="7" height="7" />
   </svg>
 );
 
 const ProcurementIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-    <polyline points="14 2 14 8 20 8"/>
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <polyline points="14 2 14 8 20 8" />
   </svg>
 );
 
 const PPMPIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-    <polyline points="14 2 14 8 20 8"/>
-    <line x1="9" y1="13" x2="15" y2="13"/>
-    <line x1="9" y1="17" x2="12" y2="17"/>
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <polyline points="14 2 14 8 20 8" />
+    <line x1="9" y1="13" x2="15" y2="13" />
+    <line x1="9" y1="17" x2="12" y2="17" />
   </svg>
 );
 
 const PurchaseIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
-    <line x1="7" y1="7" x2="7.01" y2="7"/>
+    <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+    <line x1="7" y1="7" x2="7.01" y2="7" />
   </svg>
 );
 
 const SignOutIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-    <polyline points="16 17 21 12 16 7"/>
-    <line x1="21" y1="12" x2="9" y2="12"/>
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+    <polyline points="16 17 21 12 16 7" />
+    <line x1="21" y1="12" x2="9" y2="12" />
   </svg>
 );
 
 const NAV_ITEMS = [
   { label: "Dashboard", icon: <DashboardIcon />, to: "/dashboard" },
   { label: "Procurement", icon: <ProcurementIcon />, to: "/procurement" },
-  // { label: "PPMP", icon: <PPMPIcon />, to: "/ppmp" },
-  { label: "Purchase Request", icon: <PurchaseIcon />, to: "/purchase-request" },
+  { label: "PPMP", icon: <PPMPIcon />, to: "/ppmp" },
+  //{ label: "Purchase Request", icon: <PurchaseIcon />, to: "/purchase-request" },
 ];
 
 export default function Sidebar() {
@@ -57,11 +57,21 @@ export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const handleConfirmLogout = () => {
-    localStorage.removeItem("token");
+  const handleConfirmLogout = async () => {
+    try {
+      await fetch('/auth/logout', {
+        method: 'POST',
+        headers: { Accept: 'application/json' },
+        credentials: 'include',
+      });
+    } catch (_) {
+      // proceed with local cleanup even if request fails
+    }
+    localStorage.removeItem('token');
     sessionStorage.clear();
-    navigate("/signin");
+    navigate('/signin');
   };
+
 
   return (
     <>
@@ -100,7 +110,7 @@ export default function Sidebar() {
           )}
         </div>
 
-       
+
         <nav className="flex flex-col gap-1 px-2 flex-1">
           {NAV_ITEMS.map(({ label, icon, to }) => {
             const active =
@@ -126,7 +136,7 @@ export default function Sidebar() {
             );
           })}
 
-        
+
           <button
             onClick={() => setShowSignout(true)}
             className={`
@@ -142,7 +152,7 @@ export default function Sidebar() {
           </button>
         </nav>
 
-       
+
         <button
           onClick={() => setExpanded(!expanded)}
           className={`
@@ -170,7 +180,7 @@ export default function Sidebar() {
         </button>
       </aside>
 
-     
+
       <Signout
         isOpen={showSignout}
         onClose={() => setShowSignout(false)}

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\OtpMail;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -65,18 +66,22 @@ class AuthController extends Controller
 
         $otp = random_int(100000, 999999);
 
+        $expiresInMinutes = 5;
+
         DB::table('login_otps')->insert([
-            'email' => $email,
-            'otp_hash' => Hash::make((string) $otp),
-            'expires_at' => now()->addMinutes(5),
-            'attempts' => 0,
+            'email'      => $email,
+            'otp_hash'   => Hash::make((string) $otp),
+            'expires_at' => now()->addMinutes($expiresInMinutes),
+            'attempts'   => 0,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
-        Mail::raw("Your OTP is: {$otp}", function ($message) use ($email): void {
-            $message->to($email)->subject('Your Login OTP');
-        });
+        Mail::to($email)->send(new OtpMail(
+            otp: (string) $otp,
+            name: trim($user->first_name . ' ' . $user->last_name) ?: 'User',
+            expiresInMinutes: $expiresInMinutes,
+        ));
 
         return response()->json([
             'message' => 'OTP sent successfully.',
@@ -133,27 +138,30 @@ class AuthController extends Controller
                 'updated_at' => now(),
             ]);
 
+        // ── Single-session enforcement ─────────────────────────────────────────
+        // If the user is already logged in on another device, refuse this login.
+        if ($user->active_session_id) {
+            return response()->json([
+                'message' => 'You are already logged in on another device. Please log out there first.',
+            ], 409);
+        }
+
         Auth::login($user);
         $request->session()->regenerate();
 
         $currentSessionId = $request->session()->getId();
         $deviceId = $request->cookie('device_id') ?: (string) Str::uuid();
 
-        if ($user->active_session_id && $user->active_session_id !== $currentSessionId) {
-            DB::table(config('session.table', 'sessions'))
-                ->where('id', $user->active_session_id)
-                ->delete();
-        }
-
         $user->forceFill([
-            'active_session_id' => $currentSessionId,
+            'active_session_id'         => $currentSessionId,
             'active_device_fingerprint' => hash('sha256', $deviceId.'|'.$request->userAgent()),
         ])->save();
 
         return response()->json([
             'message' => 'Login successful.',
-            'user' => $user,
+            'user'    => $user,
         ])->cookie('device_id', $deviceId, 60 * 24 * 365 * 5);
+
     }
 
     public function resendOtp(Request $request): JsonResponse
