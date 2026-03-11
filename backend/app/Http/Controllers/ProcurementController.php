@@ -24,15 +24,43 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
+/**
+ * Handles the main procurement workspace for authenticated users.
+ *
+ * This controller is one of the heaviest application entry points because it
+ * coordinates:
+ * - procurement CRUD operations
+ * - attachment-aware business rules
+ * - purchase request coupling
+ * - revision logging
+ * - notification side effects
+ * - search/filter/index endpoints used by the frontend tables
+ *
+ * The controller intentionally keeps read/query helpers and permission logic
+ * near the bottom so the primary request handlers stay near the top.
+ */
 class ProcurementController extends Controller
 {
+    /**
+     * Statuses currently accepted by validation and workflow logic.
+     */
     public const ALLOWED_STATUSES = ['pending', 'approved', 'rejected'];
   
+    /**
+     * Inject supporting services for audit logging and notifications.
+     */
     public function __construct(
         private readonly ProcurementRevisionLogger $revisionLogger,
         private readonly NotificationWorkflowService $notificationWorkflow
     ) {}
 
+    /**
+     * Search procurements with support for keyword, exact-match, cursor, and
+     * short-lived caching to keep repeated table queries responsive.
+     *
+     * This endpoint is designed for the frontend's global procurement search,
+     * so it accepts both standard pagination and cursor-based async loading.
+     */
     public function search(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -119,6 +147,13 @@ class ProcurementController extends Controller
         return response()->json($result);
     }
 
+    /**
+     * Filter procurements using structured query parameters.
+     *
+     * This endpoint is separate from free-text search so the frontend can
+     * build deterministic filter UIs around status, requester, project,
+     * procurement mode, and date ranges.
+     */
     public function filter(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -152,6 +187,12 @@ class ProcurementController extends Controller
         return response()->json($this->buildPaginatedResponse($query, $perPage, $cursor, $async));
     }
 
+    /**
+     * Return the procurement listing for authenticated users.
+     *
+     * This is the broad listing endpoint and can optionally include soft-
+     * deleted records when the query parameter requests them.
+     */
     public function index(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -177,6 +218,12 @@ class ProcurementController extends Controller
         return response()->json($this->buildPaginatedResponse($query, $perPage, $cursor, $async));
     }
 
+    /**
+     * Return only the procurements requested by the currently logged-in user.
+     *
+     * The response format mirrors the general index endpoint so the frontend
+     * can switch between "all" and "mine" views with minimal extra logic.
+     */
     public function mine(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -203,11 +250,18 @@ class ProcurementController extends Controller
         return response()->json($this->buildPaginatedResponse($query, $perPage, $cursor, $async));
     }
 
+    /**
+     * Return a single procurement with all standard relations eagerly loaded.
+     */
     public function show(Procurement $procurement): JsonResponse
     {
         return response()->json($procurement->load($this->procurementRelations()));
     }
 
+    /**
+     * Return paginated revision history for a procurement when the current
+     * user is allowed to inspect that record's audit trail.
+     */
     public function revisions(Request $request, Procurement $procurement): JsonResponse
     {
         if (!$this->canViewRestrictedData($request, $procurement)) {
@@ -231,6 +285,13 @@ class ProcurementController extends Controller
         return response()->json($revisions);
     }
 
+    /**
+     * Create a procurement together with its coupled purchase request and
+     * optional attachment-module seed records in one transaction.
+     *
+     * This endpoint also logs the creation revision and triggers the
+     * submission notification workflow once the record is successfully saved.
+     */
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -397,6 +458,13 @@ class ProcurementController extends Controller
         ], 201);
     }
 
+    /**
+     * Update procurement data and record meaningful workflow side effects.
+     *
+     * This is one of the most important write endpoints in the controller:
+     * it enforces status restrictions, writes revisions, and notifies other
+     * parties when the change should have downstream visibility.
+     */
     public function update(Request $request, Procurement $procurement): JsonResponse
     {
         if (!$this->canModify($request, $procurement)) {
@@ -1235,7 +1303,6 @@ class ProcurementController extends Controller
     }
 
 }
-
 
 
 

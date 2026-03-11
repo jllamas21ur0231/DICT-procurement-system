@@ -23,6 +23,7 @@ class User extends Authenticatable
         'middle_name',
         'email',
         'username',
+        'profile_picture',
         'access_type',
         'role_id',
         'is_active',

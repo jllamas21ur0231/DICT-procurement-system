@@ -40,6 +40,7 @@ class WebRoutesRegistrationTest extends TestCase
         // Auth profile/session
         $this->assertRegistered('GET', '/auth/me', AuthController::class.'@me');
         $this->assertRegistered('GET', '/auth/profile', AuthController::class.'@profile');
+        $this->assertRegistered('PUT', '/auth/profile', AuthController::class.'@updateProfile');
         $this->assertRegistered('POST', '/auth/logout', AuthController::class.'@logout');
 
         // Procurements core
