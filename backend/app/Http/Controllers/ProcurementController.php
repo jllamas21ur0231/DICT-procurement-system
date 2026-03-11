@@ -913,21 +913,6 @@ class ProcurementController extends Controller
                 ]);
             }
 
-            foreach ($procurement->technicalSpecificationAttachments as $sourceTechnicalSpecification) {
-                TechnicalSpecificationAttachment::create([
-                    'procurement_id' => $clone->id,
-                    'uploaded_by' => $request->user()->id,
-                    'spec_type' => $sourceTechnicalSpecification->spec_type,
-                    'label' => $sourceTechnicalSpecification->label,
-                    'file_name' => $sourceTechnicalSpecification->file_name,
-                    'file_path' => $this->duplicateStoredFilePath($sourceTechnicalSpecification->file_path, $clone->id, 'technical-specifications'),
-                    'mime_type' => $sourceTechnicalSpecification->mime_type,
-                    'file_size' => $sourceTechnicalSpecification->file_size,
-                    'remarks' => $sourceTechnicalSpecification->remarks,
-                    'sort_order' => $sourceTechnicalSpecification->sort_order,
-                ]);
-            }
-
             $this->revisionLogger->log(
                 $request,
                 $clone,
@@ -1303,7 +1288,6 @@ class ProcurementController extends Controller
     }
 
 }
-
 
 
 
