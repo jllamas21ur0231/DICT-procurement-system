@@ -2,9 +2,11 @@
 
 use App\Http\Middleware\EnsureActiveDeviceSession;
 use App\Http\Middleware\EnsureActiveSAdminSession;
+use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -52,5 +54,23 @@ return Application::configure(basePath: dirname(__DIR__))
 
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (AuthenticationException $exception, Request $request) {
+            if (
+                $request->expectsJson()
+                || $request->is('auth/*')
+                || $request->is('sadmin/*')
+                || $request->is('procurements*')
+                || $request->is('purchase-requests*')
+                || $request->is('notifications*')
+                || $request->is('reports*')
+                || $request->is('admin/*')
+                || $request->is('super-admin/*')
+            ) {
+                return response()->json([
+                    'message' => 'Unauthenticated.',
+                ], 401);
+            }
+
+            return null;
+        });
     })->create();

@@ -142,6 +142,7 @@ class WebRoutesRegistrationTest extends TestCase
         $this->assertRegistered('GET', '/sadmin/me', SAdminController::class.'@me');
         $this->assertRegistered('POST', '/sadmin/logout', SAdminController::class.'@logoutSAdmin');
         $this->assertRegistered('GET', '/sadmin/procurements', SAdminController::class.'@procurements');
+        $this->assertRegistered('GET', '/sadmin/procurements/filter', SAdminController::class.'@filterProcurements');
         $this->assertRegistered('POST', '/sadmin/procurements', SAdminController::class.'@storeProcurement');
         $this->assertRegistered('POST', '/sadmin/procurements/{procurement}/attachments', SAdminController::class.'@uploadProcurementAttachment');
         $this->assertRegistered('GET', '/sadmin/users', SAdminController::class.'@users');

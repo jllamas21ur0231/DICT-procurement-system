@@ -191,6 +191,7 @@ Route::prefix('sadmin')->group(function (): void {
         Route::get('/me', [SAdminController::class, 'me']);
         Route::post('/logout', [SAdminController::class, 'logoutSAdmin']);
         Route::get('/procurements', [SAdminController::class, 'procurements']);
+        Route::get('/procurements/filter', [SAdminController::class, 'filterProcurements']);
         Route::post('/procurements', [SAdminController::class, 'storeProcurement']);
         Route::post('/procurements/{procurement}/attachments', [SAdminController::class, 'uploadProcurementAttachment']);
         Route::get('/users', [SAdminController::class, 'users']);
@@ -203,7 +204,6 @@ Route::prefix('sadmin')->group(function (): void {
         Route::get('/purchase-requests', [SAdminController::class, 'purchaseRequests']);
     });
 });
-
 
 
 

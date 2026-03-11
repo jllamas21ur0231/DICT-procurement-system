@@ -6,17 +6,22 @@ use App\Models\Procurement;
 use App\Models\ProcurementMode;
 use App\Models\ProcurementPdf;
 use App\Models\Project;
+use App\Services\OtpSenderService;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class SAdminController extends Controller
 {
+    public function __construct(
+        private readonly OtpSenderService $otpSender,
+    ) {}
+
     /**
      * Return the currently authenticated sAdmin (used for session check).
      */
@@ -62,19 +67,23 @@ class SAdminController extends Controller
             ->update(['consumed_at' => now(), 'updated_at' => now()]);
 
         $otp = random_int(100000, 999999);
+        $expiresInMinutes = 5;
 
         DB::table('login_otps')->insert([
             'email'      => $email,
             'otp_hash'   => Hash::make((string) $otp),
-            'expires_at' => now()->addMinutes(5),
+            'expires_at' => now()->addMinutes($expiresInMinutes),
             'attempts'   => 0,
             'created_at' => now(),
             'updated_at' => now(),
         ]);
 
-        Mail::raw("Your Admin OTP is: {$otp}", function ($message) use ($email): void {
-            $message->to($email)->subject('Admin Login OTP');
-        });
+        $this->otpSender->send(
+            email: $email,
+            name: trim(($sadmin->first_name ?? '').' '.($sadmin->last_name ?? '')),
+            otp: (string) $otp,
+            expiresInMinutes: $expiresInMinutes,
+        );
 
         return response()->json(['message' => 'OTP sent successfully.']);
     }
@@ -280,6 +289,80 @@ class SAdminController extends Controller
     }
 
     /**
+     * Filter procurements by attachment visibility for sAdmin review.
+     */
+    public function filterProcurements(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'attachment_status' => ['nullable', Rule::in(['active', 'deleted', 'all'])],
+            'module' => ['nullable', Rule::in(['any', 'app', 'ppmp', 'msri', 'srfi', 'technical_specification'])],
+        ]);
+
+        $attachmentStatus = $validated['attachment_status'] ?? 'deleted';
+        $module = $validated['module'] ?? 'any';
+
+        $activeRelationMap = $this->attachmentRelationMap(false);
+        $withDeletedRelationMap = $this->attachmentRelationMap(true);
+        $relationsToLoad = $attachmentStatus === 'active' ? $activeRelationMap : $withDeletedRelationMap;
+        $modulesToInspect = $module === 'any' ? array_keys($relationsToLoad) : [$module];
+
+        $query = Procurement::query()
+            ->with([
+                'procurementMode:id,name,code',
+                'projectRecord:id,name',
+                'requester:id,first_name,last_name,email',
+                ...array_values($relationsToLoad),
+            ])
+            ->where('deleted', false);
+
+        $query->where(function ($attachmentQuery) use ($attachmentStatus, $modulesToInspect, $activeRelationMap, $withDeletedRelationMap): void {
+            foreach ($modulesToInspect as $index => $attachmentKey) {
+                $relation = $attachmentStatus === 'active'
+                    ? $activeRelationMap[$attachmentKey]
+                    : $withDeletedRelationMap[$attachmentKey];
+
+                $method = $index === 0 ? 'whereHas' : 'orWhereHas';
+
+                $attachmentQuery->{$method}($relation, function ($relationQuery) use ($attachmentStatus): void {
+                    if ($attachmentStatus === 'deleted') {
+                        $relationQuery->where('deleted', true);
+                    } elseif ($attachmentStatus === 'active') {
+                        $relationQuery->where('deleted', false);
+                    }
+                });
+            }
+        });
+
+        $procurements = $query
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id')
+            ->get()
+            ->map(function (Procurement $procurement) use ($attachmentStatus) {
+                return [
+                    'id' => $procurement->id,
+                    'procurement_no' => $procurement->procurement_no,
+                    'title' => $procurement->title,
+                    'status' => $procurement->status,
+                    'description' => $procurement->description,
+                    'mode_of_procurement' => $procurement->procurementMode?->name,
+                    'project' => $procurement->projectRecord?->name,
+                    'requested_by_name' => trim(($procurement->requester?->first_name ?? '').' '.($procurement->requester?->last_name ?? '')),
+                    'created_at' => $procurement->created_at,
+                    'updated_at' => $procurement->updated_at,
+                    'attachments' => $this->buildAttachmentPayload($procurement, $attachmentStatus),
+                ];
+            });
+
+        return response()->json([
+            'filters' => [
+                'attachment_status' => $attachmentStatus,
+                'module' => $module,
+            ],
+            'data' => $procurements,
+        ]);
+    }
+
+    /**
      * Create a new procurement from the sAdmin add-form.
      * sAdmin has no regular user session, so `requested_by` is left null.
      */
@@ -399,5 +482,66 @@ class SAdminController extends Controller
 
         return response()->json($mode, 201);
     }
-}
 
+    private function attachmentRelationMap(bool $withDeleted): array
+    {
+        if ($withDeleted) {
+            return [
+                'app' => 'appAttachmentWithDeleted',
+                'ppmp' => 'ppmpAttachmentWithDeleted',
+                'msri' => 'msriAttachmentWithDeleted',
+                'srfi' => 'srfiAttachmentWithDeleted',
+                'technical_specification' => 'technicalSpecificationAttachmentsWithDeleted',
+            ];
+        }
+
+        return [
+            'app' => 'appAttachment',
+            'ppmp' => 'ppmpAttachment',
+            'msri' => 'msriAttachment',
+            'srfi' => 'srfiAttachment',
+            'technical_specification' => 'technicalSpecificationAttachments',
+        ];
+    }
+
+    private function buildAttachmentPayload(Procurement $procurement, string $attachmentStatus): array
+    {
+        $relationMap = $attachmentStatus === 'active'
+            ? $this->attachmentRelationMap(false)
+            : $this->attachmentRelationMap(true);
+
+        return [
+            'app' => $this->formatSingleAttachment($procurement->{$relationMap['app']}),
+            'ppmp' => $this->formatSingleAttachment($procurement->{$relationMap['ppmp']}),
+            'msri' => $this->formatSingleAttachment($procurement->{$relationMap['msri']}),
+            'srfi' => $this->formatSingleAttachment($procurement->{$relationMap['srfi']}),
+            'technical_specifications' => $procurement->{$relationMap['technical_specification']}
+                ->map(fn ($attachment) => $this->formatAttachmentRecord($attachment))
+                ->values(),
+        ];
+    }
+
+    private function formatSingleAttachment(mixed $attachment): ?array
+    {
+        if ($attachment === null) {
+            return null;
+        }
+
+        return $this->formatAttachmentRecord($attachment);
+    }
+
+    private function formatAttachmentRecord(object $attachment): array
+    {
+        return [
+            'id' => $attachment->id,
+            'file_name' => $attachment->file_name,
+            'file_path' => $attachment->file_path,
+            'mime_type' => $attachment->mime_type,
+            'file_size' => (int) $attachment->file_size,
+            'remarks' => $attachment->remarks,
+            'deleted' => (bool) $attachment->deleted,
+            'created_at' => $attachment->created_at,
+            'updated_at' => $attachment->updated_at,
+        ];
+    }
+}

@@ -2,18 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\Mail\OtpMail;
+use App\Services\OtpSenderService;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
+    public function __construct(
+        private readonly OtpSenderService $otpSender,
+    ) {}
+
     public function me(Request $request): JsonResponse
     {
         return response()->json($request->user());
@@ -77,11 +80,12 @@ class AuthController extends Controller
             'updated_at' => now(),
         ]);
 
-        Mail::to($email)->send(new OtpMail(
+        $this->otpSender->send(
+            email: $email,
+            name: trim($user->first_name.' '.$user->last_name),
             otp: (string) $otp,
-            name: trim($user->first_name . ' ' . $user->last_name) ?: 'User',
             expiresInMinutes: $expiresInMinutes,
-        ));
+        );
 
         return response()->json([
             'message' => 'OTP sent successfully.',

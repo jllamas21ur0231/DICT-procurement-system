@@ -89,29 +89,28 @@ class Procurement extends Model
         return $this->hasMany(TechnicalSpecificationAttachment::class, 'procurement_id')->where('deleted', false);
     }
 
-    public function appAttachment()
+    public function appAttachmentWithDeleted()
     {
         return $this->hasOne(AppAttachment::class, 'procurement_id');
     }
 
-    public function ppmpAttachment()
+    public function ppmpAttachmentWithDeleted()
     {
         return $this->hasOne(PpmpAttachment::class, 'procurement_id');
     }
 
-    public function msriAttachment()
+    public function msriAttachmentWithDeleted()
     {
         return $this->hasOne(MsriAttachment::class, 'procurement_id');
     }
 
-    public function srfiAttachment()
+    public function srfiAttachmentWithDeleted()
     {
         return $this->hasOne(SrfiAttachment::class, 'procurement_id');
     }
 
-    public function technicalSpecificationAttachments()
+    public function technicalSpecificationAttachmentsWithDeleted()
     {
         return $this->hasMany(TechnicalSpecificationAttachment::class, 'procurement_id');
     }
 }
-

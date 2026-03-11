@@ -17,11 +17,6 @@ class PurchaseRequestController extends Controller
         private readonly ProcurementRevisionLogger $revisionLogger,
         private readonly NotificationWorkflowService $notificationWorkflow
     ) {}
-  
-    public function __construct(private readonly ProcurementRevisionLogger $revisionLogger)
-    {
-    }
-
     public function index(Request $request): JsonResponse
     {
         $includeDeleted = filter_var($request->query('include_deleted', false), FILTER_VALIDATE_BOOLEAN);

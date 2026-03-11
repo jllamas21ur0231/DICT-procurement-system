@@ -503,9 +503,8 @@ class ProcurementController extends Controller
                 }
             }
 
-            if (array_key_exists('status', $validated) && ! $this->sameStatus($originalStatus, $procurement->status)) {
-                $this->notificationWorkflow->procurementStatusChanged($procurement, $originalStatus);
             if (array_key_exists('status', $validated) && !$this->sameStatus($originalStatus, $procurement->status)) {
+                $this->notificationWorkflow->procurementStatusChanged($procurement, $originalStatus);
                 $this->notifyRequesterOnStatusChange($procurement, $originalStatus);
             }
 
@@ -1236,7 +1235,6 @@ class ProcurementController extends Controller
     }
 
 }
-
 
 
 
