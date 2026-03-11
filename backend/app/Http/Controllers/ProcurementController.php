@@ -27,11 +27,12 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class ProcurementController extends Controller
 {
     public const ALLOWED_STATUSES = ['pending', 'approved', 'rejected'];
-  
+
     public function __construct(
         private readonly ProcurementRevisionLogger $revisionLogger,
         private readonly NotificationWorkflowService $notificationWorkflow
-    ) {}
+    ) {
+    }
 
     public function search(Request $request): JsonResponse
     {
@@ -503,9 +504,8 @@ class ProcurementController extends Controller
                 }
             }
 
-            if (array_key_exists('status', $validated) && ! $this->sameStatus($originalStatus, $procurement->status)) {
-                $this->notificationWorkflow->procurementStatusChanged($procurement, $originalStatus);
             if (array_key_exists('status', $validated) && !$this->sameStatus($originalStatus, $procurement->status)) {
+                $this->notificationWorkflow->procurementStatusChanged($procurement, $originalStatus);
                 $this->notifyRequesterOnStatusChange($procurement, $originalStatus);
             }
 
