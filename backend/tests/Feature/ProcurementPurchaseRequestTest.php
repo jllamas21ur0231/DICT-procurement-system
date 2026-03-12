@@ -433,6 +433,7 @@ class ProcurementPurchaseRequestTest extends TestCase
 
         Storage::disk('public')->put('procurements/'.$originalId.'/original-attachment.pdf', 'pdf-content');
         Storage::disk('public')->put('procurements/'.$originalId.'/saro/original-saro.pdf', 'saro-content');
+        Storage::disk('public')->put('procurements/'.$originalId.'/technical-specifications/original-spec.pdf', 'spec-content');
 
         $this->assertDatabaseHas('procurements', ['id' => $originalId, 'procurement_no' => $originalNo]);
 
@@ -451,6 +452,20 @@ class ProcurementPurchaseRequestTest extends TestCase
             'mime_type' => 'application/pdf',
             'file_size' => 12,
             'remarks' => 'Original SARO',
+        ]);
+
+        TechnicalSpecificationAttachment::create([
+            'procurement_id' => $originalId,
+            'uploaded_by' => $requester->id,
+            'spec_type' => 'technical_specification',
+            'label' => 'Original Technical Specification',
+            'file_name' => 'Original Technical Specification.pdf',
+            'file_path' => 'procurements/'.$originalId.'/technical-specifications/original-spec.pdf',
+            'mime_type' => 'application/pdf',
+            'file_size' => 12,
+            'remarks' => 'Original spec',
+            'sort_order' => 1,
+            'deleted' => false,
         ]);
 
         $duplicateResponse = $this->withoutMiddleware(EnsureActiveDeviceSession::class)
@@ -490,6 +505,14 @@ class ProcurementPurchaseRequestTest extends TestCase
         $this->assertNotNull($clonedSaro);
         $this->assertNotSame('procurements/'.$originalId.'/saro/original-saro.pdf', $clonedSaro->file_path);
         Storage::disk('public')->assertExists($clonedSaro->file_path);
+
+        $clonedTechnicalSpecifications = TechnicalSpecificationAttachment::where('procurement_id', $duplicateId)->get();
+        $this->assertCount(1, $clonedTechnicalSpecifications);
+        $this->assertNotSame(
+            'procurements/'.$originalId.'/technical-specifications/original-spec.pdf',
+            $clonedTechnicalSpecifications->first()->file_path
+        );
+        Storage::disk('public')->assertExists($clonedTechnicalSpecifications->first()->file_path);
     }
 
     public function test_super_admin_can_view_purchase_request_of_other_user(): void

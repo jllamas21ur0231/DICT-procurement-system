@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Mail\NotificationMail;
 use App\Models\Notification;
 use App\Models\Procurement;
 use App\Models\Saro;
@@ -279,8 +280,12 @@ class NotificationWorkflowService
             return;
         }
 
-        Mail::raw($body, function ($message) use ($recipient, $subject): void {
-            $message->to($recipient->email)->subject($subject);
-        });
+        $recipientName = trim($recipient->first_name.' '.$recipient->last_name);
+
+        Mail::to($recipient->email)->send(new NotificationMail(
+            subjectLine: $subject,
+            messageBody: $body,
+            recipientName: $recipientName !== '' ? $recipientName : 'User',
+        ));
     }
 }
