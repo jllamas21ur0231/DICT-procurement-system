@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Sidebar from './Sidebar';
 import Profile from '../pages/Profile';
 import Notification from '../pages/Notification';
@@ -50,9 +50,36 @@ const FILTER_OPTIONS = ["All", "Procurement", "PPMP", "Purchase Request"];
 // ── Inner layout — consumes the context provided by the wrapper below ────────
 function MainLayoutInner({ children }) {
   const { search, setSearch, filter, setFilter } = useSearch();
-  const [notifCount] = useState(2);
+  const [notifCount, setNotifCount] = useState(0);
   const [showProfile, setShowProfile] = useState(false);
   const [showNotif, setShowNotif] = useState(false);
+  const intervalRef = useRef(null);
+
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const res = await fetch('/notifications/unread-count', {
+        credentials: 'include',
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setNotifCount(data.unread_count ?? 0);
+      }
+    } catch {
+      // silently ignore — badge simply won't update if offline
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUnreadCount();
+    intervalRef.current = setInterval(fetchUnreadCount, 30_000);
+    return () => clearInterval(intervalRef.current);
+  }, [fetchUnreadCount]);
+
+  const handleCloseNotif = useCallback(() => {
+    setShowNotif(false);
+    fetchUnreadCount(); // refresh badge after panel closes
+  }, [fetchUnreadCount]);
 
   return (
     <>
@@ -108,8 +135,8 @@ function MainLayoutInner({ children }) {
             >
               <BellIcon />
               {notifCount > 0 && (
-                <Badge className="absolute -top-0.5 -right-0.5 w-4 h-4 p-0 flex items-center justify-center bg-red-500 text-[10px] rounded-full border-0">
-                  {notifCount}
+                <Badge className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 p-0 flex items-center justify-center bg-red-500 text-[10px] rounded-full border-0">
+                  {notifCount > 99 ? '99+' : notifCount}
                 </Badge>
               )}
             </Button>
@@ -130,7 +157,7 @@ function MainLayoutInner({ children }) {
       </div>
 
       <Profile isOpen={showProfile} onClose={() => setShowProfile(false)} />
-      <Notification isOpen={showNotif} onClose={() => setShowNotif(false)} />
+      <Notification isOpen={showNotif} onClose={handleCloseNotif} onCountChange={setNotifCount} />
     </>
   );
 }

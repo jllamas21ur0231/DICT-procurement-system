@@ -52,7 +52,8 @@ class ProcurementController extends Controller
     public function __construct(
         private readonly ProcurementRevisionLogger $revisionLogger,
         private readonly NotificationWorkflowService $notificationWorkflow
-    ) {}
+    ) {
+    }
 
     /**
      * Search procurements with support for keyword, exact-match, cursor, and

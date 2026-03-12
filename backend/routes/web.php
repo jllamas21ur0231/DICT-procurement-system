@@ -227,8 +227,8 @@ Route::middleware(['auth', 'active.device'])->group(function (): void {
     Route::prefix('notifications')->group(function (): void {
         Route::get('/', [NotificationController::class, 'index']);
         Route::get('/unread-count', [NotificationController::class, 'unreadCount']);
+        Route::patch('/read-all', [NotificationController::class, 'markAllRead']);   // ← must come BEFORE /{notification}
         Route::patch('/{notification}/read', [NotificationController::class, 'markRead']);
-        Route::patch('/read-all', [NotificationController::class, 'markAllRead']);
     });
 
     /*

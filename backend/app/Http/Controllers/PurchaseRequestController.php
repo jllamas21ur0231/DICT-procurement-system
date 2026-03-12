@@ -16,7 +16,11 @@ class PurchaseRequestController extends Controller
     public function __construct(
         private readonly ProcurementRevisionLogger $revisionLogger,
         private readonly NotificationWorkflowService $notificationWorkflow
-    ) {}
+    ) {
+    }
+
+
+
     public function index(Request $request): JsonResponse
     {
         $includeDeleted = filter_var($request->query('include_deleted', false), FILTER_VALIDATE_BOOLEAN);
@@ -405,7 +409,7 @@ class PurchaseRequestController extends Controller
 
     private function isSuperAdmin(?User $user): bool
     {
-        if (! $user) {
+        if (!$user) {
             return false;
         }
 
@@ -415,7 +419,7 @@ class PurchaseRequestController extends Controller
         }
 
         $role = $user->role;
-        if (! $role) {
+        if (!$role) {
             return false;
         }
 
