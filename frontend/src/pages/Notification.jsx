@@ -26,7 +26,7 @@ async function api(url, method = "GET") {
   return res.json();
 }
 
-export default function Notification({ isOpen, onClose }) {
+export default function Notification({ isOpen, onClose, onCountChange }) {
   const [showFullModal, setShowFullModal] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -39,14 +39,16 @@ export default function Notification({ isOpen, onClose }) {
     setError(null);
     try {
       const data = await api("/notifications");
-      setNotifications(data.data ?? data);
+      const list = data.data ?? data;
+      setNotifications(list);
+      onCountChange?.(list.filter((n) => !n.read_at).length);
     } catch (err) {
       setError("Failed to load notifications.");
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [onCountChange]);
 
   useEffect(() => {
     if (isOpen) fetchNotifications();
@@ -56,9 +58,11 @@ export default function Notification({ isOpen, onClose }) {
   const markAsRead = async (id) => {
     try {
       await api(`/notifications/${id}/read`, "PATCH");
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n))
-      );
+      setNotifications((prev) => {
+        const updated = prev.map((n) => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n));
+        onCountChange?.(updated.filter((n) => !n.read_at).length);
+        return updated;
+      });
     } catch (err) {
       console.error("Failed to mark as read:", err);
     }
@@ -69,9 +73,11 @@ export default function Notification({ isOpen, onClose }) {
     setMarkingRead(true);
     try {
       await api("/notifications/read-all", "PATCH");
-      setNotifications((prev) =>
-        prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() }))
-      );
+      setNotifications((prev) => {
+        const updated = prev.map((n) => ({ ...n, read_at: n.read_at ?? new Date().toISOString() }));
+        onCountChange?.(0);
+        return updated;
+      });
     } catch (err) {
       console.error("Failed to mark all as read:", err);
     } finally {
